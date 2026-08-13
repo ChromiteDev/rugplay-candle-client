@@ -67,9 +67,9 @@ const mock = `
       { id: 'whale', name: 'Whale Watch', description: 'Buy 1M BUSS of a single coin', difficulty: 'HARD', cashReward: 5000, gemReward: 250, targetValue: 1000000, progress: 2500, unlocked: false, claimed: false },
     ] });
     if (p === '/api/notifications') return json({ unreadCount: 3, notifications: [
-      { id: 1, title: 'Crate unlocked', body: 'Your 400-gem crate opened a rare name color.', read: false, createdAt: (NOW - 3600e3) / 1000 },
-      { id: 2, title: 'Daily reward ready', body: 'Claim day 7 of your streak.', read: false, createdAt: (NOW - 7200e3) / 1000 },
-      { id: 3, title: 'MOONCAT pumped', body: '+482% in 24h.', read: false, createdAt: (NOW - 10800e3) / 1000 },
+      { id: 1, type: 'MENTION', title: 'apex mentioned you', message: '"@slate check this rug before you buy"', link: '/coin/MOONCAT', isRead: false, createdAt: (NOW - 1800e3) / 1000 },
+      { id: 2, type: 'MENTION', title: 'whale69 mentioned you', message: '"@slate nice bag, holding mine"', link: '/coin/TEST', isRead: false, createdAt: (NOW - 5400e3) / 1000 },
+      { id: 3, type: 'TRANSFER', title: 'Transfer received', message: '+$500.00 from whale69', link: null, isRead: false, createdAt: (NOW - 10800e3) / 1000 },
     ] });
     if (p === '/api/hopium/questions') return json({ questions: [
       { id: 1, question: 'Will MOONCAT hit 0.01 before Friday?', status: 'OPEN', yesOdds: 62, noOdds: 38, yesBets: 142, noBets: 88, endsAt: (NOW + 2 * 86400e3) / 1000 },
@@ -85,6 +85,17 @@ const mock = `
     if (p === '/api/rewards/claim') return json({ canClaim: true, streakDay: 7, streak: 7, todayAmount: 2200, windowClosesAt: (NOW + 3600e3) / 1000, nextDayAmount: 2600 });
     if (p === '/api/prestige') return json({ level: 1, netWorth: 17500.5, cash: 4200.5, nextCost: 100000, multiplier: 1.0 });
     if (p === '/api/keys') return json({ key: 'rgpl_abc123', remainingRequests: 842, limit: 1000, createdAt: (NOW - 86400e3 * 3) / 1000 });
+    if (p.startsWith('/api/user/')) {
+      const u = p.split('/')[3];
+      const KNOWN = {
+        slate: { id: 7, username: 'slate', name: 'Slate', bio: 'trader', prestigeLevel: 1, totalPortfolioValue: 17500.5, totalCoinsCreated: 3, founderBadge: true, createdAt: (NOW - 86400e3 * 90) / 1000 },
+        apex: { id: 9, username: 'apex', name: 'Apex', bio: 'moon hunter', prestigeLevel: 0, totalPortfolioValue: 8800, totalCoinsCreated: 1, createdAt: (NOW - 86400e3 * 40) / 1000 },
+        whale69: { id: 3, username: 'whale69', name: 'Whale', bio: 'big bags', prestigeLevel: 2, totalPortfolioValue: 380000, totalCoinsCreated: 8, createdAt: (NOW - 86400e3 * 200) / 1000 },
+        paper: { id: 5, username: 'paper', name: 'Paper', bio: 'diamond hands, paper heart', prestigeLevel: 0, totalPortfolioValue: 2100, totalCoinsCreated: 0, createdAt: (NOW - 86400e3 * 10) / 1000 },
+      };
+      if (KNOWN[u]) return json({ user: KNOWN[u] });
+      return json({ user: null });
+    }
     if (p === '/api/user/arcade-stats' || p === '/api/user/settings') return json({});
     if (p.startsWith('/api/coin/')) {
       const sym = p.split('/')[3];
@@ -94,8 +105,9 @@ const mock = `
         { username: 'apex', quantity: 600000, percentage: 6.0, liquidationValue: 720 },
       ] });
       if (p.endsWith('/comments')) return json({ comments: [
-        { id: 1, username: 'apex', text: 'launching to the moon 🚀', likes: 42, createdAt: (NOW - 600e3) / 1000 },
-        { id: 2, username: 'paper', text: 'this is a rug, run', likes: 9, createdAt: (NOW - 1200e3) / 1000 },
+        { id: 1, username: 'apex', content: 'launching to the moon 🚀', likesCount: 42, createdAt: (NOW - 600e3) / 1000 },
+        { id: 2, username: 'paper', content: 'this is a rug, run', likesCount: 9, createdAt: (NOW - 1200e3) / 1000 },
+        { id: 3, username: 'slate', content: '@whale69 thanks, holding too', likesCount: 3, createdAt: (NOW - 900e3) / 1000 },
       ] });
       if (p.endsWith('/chart-history')) return json({ candlestickData: Array.from({ length: 48 }, (_, i) => ({ time: NOW / 1000 - (48 - i) * 60, open: 0.004 + i * 0.00002, high: 0.0042 + i * 0.000022, low: 0.0039 + i * 0.000019, close: 0.0041 + i * 0.000021, volume: 900 + i * 30 })), volumeData: Array.from({ length: 48 }, (_, i) => 900 + i * 30) });
       const coin = COINS.find((c) => c.symbol === sym);

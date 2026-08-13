@@ -2,6 +2,27 @@
 
 All notable changes to Candle Client are listed here. The format is plain on purpose.
 
+## v1.1.0 - 2026-08-12
+
+The Social Update.
+
+**New: Social view**
+- Friends and ranks: tag traders as Friend, Whale, Watch, or Rival. Labels live in your client only, nothing is forged server-side.
+- Rank chips render across comment rows, holders, and profiles, and with Friend Tags enabled, directly on rugplay.com comments.
+- Mentions inbox: real MENTION notifications from the server, with mark-all-read.
+- Messages: coin comments are RugPlay's chat. Compose with @mention autocomplete, post on any coin, and the recipient gets a real notification.
+- Quick transfer modal and Send buttons in profiles and the social view, using the real transfer endpoint.
+
+**New mods (205 total)**
+- Mention Radar (Site): on-site unread @mention counter from your real notifications.
+- Friend Tags (Site): on-site rank tags next to usernames in comments.
+- Quick Transfer (Site): on-site Send button on profile pages.
+- Rank Tags (Social): friend rank labels across client feeds.
+- Mention Ping (Social): toast the moment a new mention lands.
+
+**Notes**
+- The admin endpoints in the RugPlay repo are gated server-side by an account flag; no client can reach them, so 1.1.0 ships the real social layer instead.
+
 ## v1.0.0 - 2026-08-12
 
 Initial release.

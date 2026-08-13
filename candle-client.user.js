@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Candle Client for RugPlay
 // @namespace    candle.rugplay
-// @version      1.0.0
-// @description  Candle Client for RugPlay by Chromites. Right Shift opens the client. 200 mods in 13 categories, all off until enabled. On-site mods render directly on rugplay.com, the rest live inside the client. Every mod runs on real RugPlay API endpoints and real platform rules. Nothing is faked.
+// @version      1.1.0
+// @description  Candle Client for RugPlay by Chromites. Right Shift opens the client. 205 mods in 13 categories, all off until enabled. On-site mods render directly on rugplay.com, the rest live inside the client. Every mod runs on real RugPlay API endpoints and real platform rules. Nothing is faked.
 // @author       Chromites
 // @match        https://rugplay.com/*
 // @match        http://localhost:5173/*
@@ -14,9 +14,9 @@
 // ==/UserScript==
 
 /*
- * Candle Client v1.0.0, by Chromites.
+ * Candle Client v1.1.0, by Chromites.
  *
- * Right Shift toggles the client. 200 mods in 13 categories, all OFF by default.
+ * Right Shift toggles the client. 205 mods in 13 categories, all OFF by default.
  * Flip a mod on and it takes effect. The Site category renders directly on the
  * page (a HUD over rugplay.com), the rest enhance the client window. All
  * backed by real RugPlay endpoints and the real server rules from the repo:
@@ -46,7 +46,7 @@
   // Constants
   // ════════════════════════════════════════════════════════════════════
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
   const DEVELOPER = 'Chromites';
   const SWAP_FEE = 0.003;
 
@@ -123,7 +123,7 @@
     { id: '1d', label: '1d', hours: 2160 },
   ];
 
-  // ── Mod registry — 200 mods across 13 categories, every one real ───
+  // ── Mod registry — 205 mods across 13 categories, every one real ───
 
   const MODS = [
     // Site (35) — mods that render directly on rugplay.com
@@ -162,6 +162,9 @@
     { id: 'sitetransfers', name: 'Transfer Widget', cat: 'Site', icon: 'send', def: false, desc: 'Onsite recent transfer widget on /portfolio.' },
     { id: 'siteseasonjoin', name: 'Season Join', cat: 'Site', icon: 'crown', def: false, desc: 'Onsite one-tap season entry (double-confirmed).' },
     { id: 'siteusername', name: 'Username Check', cat: 'Site', icon: 'at', def: false, desc: 'Onsite username availability widget on /settings.' },
+    { id: 'mentionradar', name: 'Mention Radar', cat: 'Site', icon: 'at', def: false, desc: 'Onsite unread @mention counter from your real notifications.' },
+    { id: 'friendtags', name: 'Friend Tags', cat: 'Site', icon: 'tag', def: false, desc: 'Onsite friend rank tags next to usernames in comments.' },
+    { id: 'quicktransfer', name: 'Quick Transfer', cat: 'Site', icon: 'send', def: false, desc: 'Onsite Send button on profile pages.' },
     // Trading (24) — coin terminal
     { id: 'quicktrade', name: 'Quick Trade', cat: 'Trading', icon: 'zap', def: false, desc: 'BUY/SELL terminal with live pool math on every coin.' },
     { id: 'slippage', name: 'Slippage Meter', cat: 'Trading', icon: 'gauge', def: false, desc: 'Live AMM price-impact badge computed from the pool.' },
@@ -272,6 +275,8 @@
     { id: 'blockprofile', name: 'Block From Profile', cat: 'Social', icon: 'ban', def: false, desc: 'Block a user from their profile modal (confirmed).' },
     { id: 'profileachievements', name: 'Profile Achievements', cat: 'Social', icon: 'award', def: false, desc: 'Achievements on any profile via the real endpoint.' },
     { id: 'userstats', name: 'User Stats', cat: 'Social', icon: 'chart', def: false, desc: 'Joined date, prestige and portfolio on profiles.' },
+    { id: 'ranks', name: 'Rank Tags', cat: 'Social', icon: 'tag', def: false, desc: 'Your friend rank labels on comment rows, holders and feeds.' },
+    { id: 'mentionping', name: 'Mention Ping', cat: 'Social', icon: 'bell', def: false, desc: 'Toast the moment a new @mention notification lands.' },
     // Shop (10)
     { id: 'inventory', name: 'Inventory', cat: 'Shop', icon: 'grid', def: false, desc: 'Your gems, owned name colors and founder badge.' },
     { id: 'crateshop', name: 'Crate Shop', cat: 'Shop', icon: 'box', def: false, desc: 'The four real crate tiers with exact costs and odds.' },
@@ -595,6 +600,25 @@
   }
   function isWatched(sym) {
     return getWatchlist().includes(sym);
+  }
+  // friends & ranks — local labels, stored in the client, never forged server-side
+  const RANK_TAGS = ['Friend', 'Whale', 'Watch', 'Rival'];
+  function getFriends() {
+    return storage.get('candle:friends', []) || [];
+  }
+  function saveFriends(list) {
+    storage.set('candle:friends', list);
+    bus.emit('friends', list);
+  }
+  function friendRank(username) {
+    if (!username) return null;
+    const f = getFriends().find((x) => String(x.username).toLowerCase() === String(username).toLowerCase());
+    return f ? f.tag : null;
+  }
+  function rankChip(username) {
+    const tag = friendRank(username);
+    if (!tag) return null;
+    return h('span', { class: 'rank-chip tag-' + tag.toLowerCase() }, tag);
   }
   function toggleWatch(sym) {
     const list = getWatchlist();
@@ -1302,6 +1326,24 @@
             wrap.remove();
           }, { confirm: 'Really block?', cls: 'btn btn-danger' }));
         }
+        if (u.username && (isMod('ranks') || isMod('quicktransfer'))) {
+          const row = h('div', { class: 'profile-actions' },
+            h('button', { class: 'btn btn-ghost btn-sm', onclick: () => transferModal(u.username) }, icon('send', 12), ' Send'),
+          );
+          if (isMod('ranks')) {
+            const sel = h('select', { class: 'select select-sm' }, RANK_TAGS.map((t) => h('option', { value: t }, t)));
+            sel.addEventListener('change', () => {
+              const list = getFriends();
+              const hit = list.find((x) => x.username.toLowerCase() === u.username.toLowerCase());
+              if (hit) hit.tag = sel.value;
+              else list.push({ username: u.username, tag: sel.value, addedAt: Date.now() });
+              saveFriends(list);
+              toast('success', 'Rank set', `@${u.username} → ${sel.value}`);
+            });
+            row.appendChild(sel);
+          }
+          body.appendChild(row);
+        }
       })
       .catch((e) => {
         const body = $('.modal-body', wrap);
@@ -1713,7 +1755,7 @@
 
       if (authed) {
         const composer = h('div', { class: 'composer' },
-          h('input', { class: 'input', placeholder: 'Say something about ' + sym }),
+          h('input', { class: 'input', placeholder: 'Say something about ' + sym + ' · @ mentions ping them' }),
           h('button', { class: 'btn btn-primary btn-sm', onclick: async (ev) => {
             const input = $('input', composer);
             const content = (input.value || '').trim();
@@ -1732,6 +1774,11 @@
           } }, icon('send', 13), ' Post'),
         );
         commentCard.appendChild(composer);
+        attachMentionAutocomplete($('input', composer), () => {
+          const pool = getFriends().map((f) => f.username);
+          (coinHolders || []).forEach((hd) => pool.push(hd.username));
+          return [...new Set(pool.filter(Boolean))];
+        });
       }
 
       apiGet(`/api/coin/${sym}/comments`, { ttl: 10000 })
@@ -1743,12 +1790,13 @@
             return;
           }
           comments.slice(0, 30).forEach((cm) => {
-            const likes = num(cm.likeCount ?? cm.likes ?? cm.like_count, 0);
+            const likes = num(cm.likeCount ?? cm.likesCount ?? cm.likes ?? cm.like_count, 0);
+            const uname = cm.username || cm.userUsername;
             const row = h('div', { class: 'comment-row' },
-              avatar(cm.username, 26),
+              avatar(uname, 26),
               h('div', { class: 'comment-main' },
                 h('div', { class: 'comment-meta' },
-                  h('span', { class: 'comment-user' }, cm.username || 'anon'),
+                  h('span', { class: 'comment-user' }, uname || 'anon'), isMod('ranks') && rankChip(uname),
                   h('span', { class: 'comment-time' }, cm.createdAt ? timeAgo(new Date(cm.createdAt).getTime()) : ''),
                 ),
                 h('div', { class: 'comment-text' }, cm.content || ''),
@@ -3931,7 +3979,7 @@
       storage.set('candle:mods', mods);
       bus.emit('mods');
       render();
-      toast('success', 'Mods reset', 'All 200 mods restored to defaults');
+      toast('success', 'Mods reset', `All ${MODS.length} mods restored to defaults`);
     } }, icon('refresh', 13), ' Reset');
     const chips = h('div', { class: 'chip-row' },
       ['All', ...MOD_CATS].map((c) => h('button', {
@@ -4445,6 +4493,7 @@
     .traffic-mini:hover { background: var(--red); color: #fff; }
     .modal-body { padding: 16px; max-height: 60vh; overflow-y: auto; }
     .profile-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .profile-actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
     .profile-name { font-size: 15px; font-weight: 750; }
     .profile-username { font-size: 12px; color: var(--mut); }
     .credits { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 22px; text-align: center; }
@@ -4921,6 +4970,45 @@
     .ms-tile.boom { background: rgba(239,68,68,.2); border-color: rgba(239,68,68,.5); color: var(--red-h); }
     .sim-info { font-size: 10.5px; color: var(--mut); }
 
+    /* ── social (v1.1.0) ──────────────────────────────────── */
+    .rank-chip { display: inline-flex; align-items: center; margin-left: 5px; padding: 0 5px; border-radius: 5px; font-size: 8.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; vertical-align: middle; }
+    .rank-chip.tag-friend { background: rgba(52,211,153,.14); color: var(--up); border: 1px solid rgba(52,211,153,.35); }
+    .rank-chip.tag-whale { background: rgba(251,191,36,.12); color: #fbbf24; border: 1px solid rgba(251,191,36,.35); }
+    .rank-chip.tag-watch { background: rgba(96,165,250,.12); color: #60a5fa; border: 1px solid rgba(96,165,250,.35); }
+    .rank-chip.tag-rival { background: rgba(239,68,68,.14); color: var(--red-h); border: 1px solid rgba(239,68,68,.4); }
+    .at-menu { position: absolute; z-index: 50; min-width: 180px; max-height: 210px; overflow-y: auto; margin-top: 2px; background: var(--bg2); border: 1px solid var(--bd); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.5); padding: 4px; }
+    .at-item { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left; padding: 6px 8px; border-radius: 7px; border: 0; background: none; color: var(--tx); font: 600 12px inherit; cursor: pointer; }
+    .at-item:hover, .at-item.on { background: rgba(239,68,68,.14); }
+    .at-item svg { color: var(--red); }
+    .composer, .msg-compose { position: relative; display: flex; gap: 6px; }
+    .msg-compose { margin-bottom: 8px; }
+    .msg-compose .input { flex: 1; min-width: 0; }
+    .field { margin-bottom: 10px; }
+    .field-label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--mut); margin-bottom: 4px; }
+    .btn.full { width: 100%; justify-content: center; }
+    .select-sm { padding: 3px 6px; font-size: 11px; }
+    .rank-add { display: flex; gap: 6px; margin: 8px 0; }
+    .rank-add .input { flex: 1; min-width: 0; }
+    .rank-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-top: 12px; }
+    .rank-card { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--bd); border-radius: 12px; background: linear-gradient(180deg, var(--bg3), var(--bg2)); }
+    .rank-card:hover { border-color: rgba(239,68,68,.4); }
+    .rank-main { flex: 1; min-width: 0; }
+    .rank-user { display: flex; align-items: center; font-weight: 700; font-size: 13px; }
+    .rank-sub { font-size: 10px; color: var(--mut); margin-top: 1px; }
+    .rank-actions { display: flex; gap: 4px; }
+    .rank-actions .btn { padding: 4px 6px; }
+    .mention-list { display: flex; flex-direction: column; gap: 2px; }
+    .mention-row { display: flex; align-items: flex-start; gap: 9px; padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .mention-row:last-child { border-bottom: 0; }
+    .mention-row .avatar { flex: none; margin-top: 1px; }
+    .mention-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; margin-top: 6px; background: #3f3f46; }
+    .mention-row.unread .mention-dot { background: var(--red); box-shadow: 0 0 8px rgba(239,68,68,.8); }
+    .mention-row.unread .mention-title { color: var(--tx); }
+    .mention-main { flex: 1; min-width: 0; }
+    .mention-title { font-weight: 700; font-size: 12.5px; color: var(--mut); display: flex; align-items: center; flex-wrap: wrap; }
+    .mention-msg { font-size: 12.5px; color: var(--tx); margin-top: 1px; word-break: break-word; }
+    .mention-meta { font-size: 10px; color: var(--mut); margin-top: 2px; }
+
     /* ── misc ──────────────────────────────────────────────── */
     .btn-danger { background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.45); color: var(--red-h); }
     .btn-danger:hover { background: var(--red); color: #fff; }
@@ -4993,6 +5081,12 @@
       border: 1px solid rgba(255,255,255,.14); border-radius: 7px; padding: 5px 8px; font: 600 11px inherit; outline: none;
     }
     .cc-uname-inp:focus { border-color: rgba(239,68,68,.5); }
+    .cc-rank-tag { display: inline-flex; align-items: center; margin-left: 5px; padding: 0 5px; border-radius: 5px; font-size: 8.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; vertical-align: middle; }
+    .cc-rank-tag.tag-friend { background: rgba(52,211,153,.16); color: #34d399; border: 1px solid rgba(52,211,153,.4); }
+    .cc-rank-tag.tag-whale { background: rgba(251,191,36,.14); color: #fbbf24; border: 1px solid rgba(251,191,36,.4); }
+    .cc-rank-tag.tag-watch { background: rgba(96,165,250,.14); color: #60a5fa; border: 1px solid rgba(96,165,250,.4); }
+    .cc-rank-tag.tag-rival { background: rgba(239,68,68,.16); color: #f87171; border: 1px solid rgba(239,68,68,.45); }
+    .cc-friendtags { font-size: 11px; }
     @media (max-width: 720px) { .cc-hud { display: none; } .cc-hud-live { display: none; } }
   `;
 
@@ -5194,6 +5288,9 @@
       case 'sitetransfers': return onsiteTransfers();
       case 'siteseasonjoin': return onsiteSeasonJoin();
       case 'siteusername': return onsiteUsername();
+      case 'mentionradar': return onsiteMentionRadar();
+      case 'friendtags': return onsiteFriendTags();
+      case 'quicktransfer': return onsiteQuickTransfer();
       default: return null;
     }
   }
@@ -5362,6 +5459,84 @@
     });
     wrap.appendChild(inp);
     wrap.appendChild(out);
+    return { el };
+  }
+
+  // v1.1.0 social widgets
+  function onsiteMentionRadar() {
+    const b = document.createElement('span');
+    b.className = 'cc-chip-body mono';
+    const el = hudChip('Mentions', b);
+    let lastCount = -1;
+    const load = () => {
+      apiGet('/api/notifications', { ttl: 15000 }).then((d) => {
+        const list = asArray(d && d.notifications).filter((n) => n.type === 'MENTION');
+        const unread = list.filter((n) => !n.isRead).length;
+        if (!el.isConnected) return;
+        b.textContent = unread ? `${unread} unread` : 'all clear';
+        el.classList.toggle('warn', unread > 0);
+        if (lastCount >= 0 && unread > lastCount && isMod('mentionping')) {
+          const fresh = list[0];
+          toast('info', 'New mention', fresh && fresh.title ? fresh.title : 'Someone mentioned you');
+        }
+        lastCount = unread;
+      }).catch(() => { b.textContent = '—'; });
+    };
+    load();
+    const t = setInterval(load, 20000);
+    return { el, timer: t };
+  }
+
+  function onsiteFriendTags() {
+    const wrap = document.createElement('div');
+    wrap.className = 'cc-friendtags';
+    const el = hudChip('Friend Tags', wrap);
+    const friends = getFriends();
+    const known = new Map(friends.map((f) => [f.username.toLowerCase(), f.tag]));
+    if (!friends.length) { wrap.textContent = 'no ranks yet'; return { el }; }
+    let tagged = 0;
+    // tag usernames in the native comment section and anywhere else on the page
+    document.querySelectorAll('a[href*="/user/"], [data-username]').forEach((a) => {
+      const name = (a.getAttribute('data-username') || (a.textContent || '').trim()).replace(/^@/, '');
+      const tag = known.get(String(name).toLowerCase());
+      if (!tag) return;
+      if (a.querySelector('.cc-rank-tag')) return;
+      const chip = document.createElement('span');
+      chip.className = 'cc-rank-tag tag-' + tag.toLowerCase();
+      chip.textContent = tag;
+      a.appendChild(chip);
+      tagged++;
+    });
+    if (!tagged) wrap.textContent = friends.length + ' ranked · none on this page';
+    else wrap.textContent = tagged + ' tagged on this page';
+    const t = setInterval(() => {
+      document.querySelectorAll('a[href*="/user/"], [data-username]').forEach((a) => {
+        const name = (a.getAttribute('data-username') || (a.textContent || '').trim()).replace(/^@/, '');
+        const tag = known.get(String(name).toLowerCase());
+        if (!tag || a.querySelector('.cc-rank-tag')) return;
+        const chip = document.createElement('span');
+        chip.className = 'cc-rank-tag tag-' + tag.toLowerCase();
+        chip.textContent = tag;
+        a.appendChild(chip);
+      });
+    }, 3000);
+    return { el, timer: t };
+  }
+
+  function onsiteQuickTransfer() {
+    const m = location.pathname.match(/^\/user\/([^/]+)/);
+    const b = document.createElement('div');
+    b.className = 'cc-chip-body';
+    const el = hudChip('Quick Transfer', b);
+    if (m) {
+      const btn = document.createElement('button');
+      btn.className = 'cc-abtn';
+      btn.textContent = 'Send BUSS to @' + m[1];
+      btn.onclick = () => transferModal(m[1]);
+      b.appendChild(btn);
+    } else {
+      b.textContent = '—';
+    }
     return { el };
   }
 
@@ -5552,7 +5727,7 @@
   }
 
   // ── mount/unmount ────────────────────────────────────────────────────
-  const ONSITE_MODS = ['locktimer', 'coinage', 'athmarker', 'poolwatch', 'devdom', 'pricealerts', 'holderradar', 'livefeed', 'seasoncard', 'treemap', 'marketstats', 'movers', 'launchkit', 'gemswallet', 'networth', 'prestigestatus', 'crateodds', 'riskmeter', 'qdepth', 'countdown', 'siteprice', 'sitechange', 'sitemcap', 'sitevol', 'sitefeed', 'sitecomments', 'sitehopium', 'siteleader', 'siteach', 'siterewards', 'sitekeys', 'sitearcade', 'sitetransfers', 'siteseasonjoin', 'siteusername'];
+  const ONSITE_MODS = ['locktimer', 'coinage', 'athmarker', 'poolwatch', 'devdom', 'pricealerts', 'holderradar', 'livefeed', 'seasoncard', 'treemap', 'marketstats', 'movers', 'launchkit', 'gemswallet', 'networth', 'prestigestatus', 'crateodds', 'riskmeter', 'qdepth', 'countdown', 'siteprice', 'sitechange', 'sitemcap', 'sitevol', 'sitefeed', 'sitecomments', 'sitehopium', 'siteleader', 'siteach', 'siterewards', 'sitekeys', 'sitearcade', 'sitetransfers', 'siteseasonjoin', 'siteusername', 'mentionradar', 'friendtags', 'quicktransfer'];
 
   function isOnsiteMod(id) {
     return ONSITE_MODS.includes(id);
@@ -5594,8 +5769,296 @@
     if (mod === 'siteseasonjoin') return /^\/season/.test(p);
     if (mod === 'siteusername') return /^\/settings/.test(p);
     if (mod === 'siteach' || mod === 'siterewards' || mod === 'sitekeys') return true;
+    if (mod === 'mentionradar') return true;
+    if (mod === 'friendtags') return /^\/coin\//.test(p);
+    if (mod === 'quicktransfer') return /^\/user\//.test(p) && !/^\/user\/(me|settings)/.test(p);
     if (mod === 'livefeed' || mod === 'seasoncard') return true;
     return false;
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Social — friends & ranks, mentions, messages
+  // ════════════════════════════════════════════════════════════════════
+
+  function transferModal(username) {
+    const wrap = h('div', { class: 'modal-back' },
+      h('div', { class: 'modal' },
+        h('div', { class: 'modal-head' },
+          h('span', { class: 'modal-title' }, 'Send BUSS'),
+          h('button', { class: 'traffic-mini', onclick: () => wrap.remove() }, icon('x', 13)),
+        ),
+        h('div', { class: 'modal-body' },
+          h('div', { class: 'field' },
+            h('label', { class: 'field-label' }, 'Recipient'),
+            h('input', { class: 'input', value: username || '', readonly: !!username, placeholder: 'username' }),
+          ),
+          h('div', { class: 'field' },
+            h('label', { class: 'field-label' }, 'Amount · min $10'),
+            h('input', { class: 'input', type: 'number', min: '10', step: 'any', placeholder: '0.00' }),
+          ),
+          h('div', { class: 'card-hint' }, '1% transfer fee · lands instantly · the real /api/transfer endpoint.'),
+          h('button', { class: 'btn btn-primary full', onclick: async (ev) => {
+            const to = username || $('input', wrap).value.trim();
+            const amt = num(parseFloat(wrap.querySelectorAll('input')[1].value), 0);
+            if (!to || amt < 10) { toast('error', 'Invalid transfer', 'Username required, min $10 cash'); return; }
+            const btn = ev.currentTarget;
+            btn.disabled = true;
+            try {
+              await apiPost('/api/transfer', { recipientUsername: to, type: 'CASH', amount: amt, coinSymbol: null });
+              toast('success', 'Transfer sent', `$${amt.toFixed(2)} to @${to}`, 3400);
+              wrap.remove();
+              bus.emit('portfolio');
+            } catch (e) {
+              toast('error', 'Transfer failed', e.message);
+              btn.disabled = false;
+            }
+          } }, icon('send', 13), ' Send'),
+        ),
+      ),
+    );
+    wrap.addEventListener('click', (ev) => { if (ev.target === wrap) wrap.remove(); });
+    $('.candle-window', shadow).appendChild(wrap);
+  }
+
+  // @mention autocomplete — suggests real usernames, inserts the token
+  function attachMentionAutocomplete(inputEl, suggestFn) {
+    let menu = null;
+    let items = [];
+    let active = -1;
+    const close = () => { if (menu) { menu.remove(); menu = null; items = []; active = -1; } };
+    const apply = (u) => {
+      const val = inputEl.value;
+      const at = val.lastIndexOf('@');
+      inputEl.value = (at >= 0 ? val.slice(0, at) : val) + '@' + u + ' ';
+      close();
+      inputEl.focus();
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    inputEl.addEventListener('input', () => {
+      const val = inputEl.value;
+      const at = val.lastIndexOf('@');
+      if (at < 0 || at === val.length - 1) { close(); return; }
+      const q = val.slice(at + 1).toLowerCase();
+      if (/\s/.test(q)) { close(); return; }
+      const found = (suggestFn() || []).filter((u) => u.toLowerCase().startsWith(q)).slice(0, 6);
+      if (!found.length) { close(); return; }
+      items = found; active = -1;
+      if (!menu) {
+        menu = h('div', { class: 'at-menu' });
+        inputEl.parentNode.appendChild(menu);
+      }
+      menu.innerHTML = '';
+      found.forEach((u, i) => {
+        menu.appendChild(h('button', { class: 'at-item', onclick: () => apply(u) }, icon('at', 12), h('span', {}, '@' + u), rankChip(u)));
+      });
+      menu.querySelectorAll('.at-item')[0]?.classList.add('on');
+      active = 0;
+    });
+    inputEl.addEventListener('keydown', (ev) => {
+      if (!menu) return;
+      if (ev.key === 'ArrowDown') { ev.preventDefault(); active = (active + 1) % items.length; highlight(); }
+      else if (ev.key === 'ArrowUp') { ev.preventDefault(); active = (active - 1 + items.length) % items.length; highlight(); }
+      else if (ev.key === 'Enter' && active >= 0) { ev.preventDefault(); apply(items[active]); }
+      else if (ev.key === 'Escape') { close(); }
+    });
+    inputEl.addEventListener('blur', () => setTimeout(close, 150));
+    function highlight() {
+      menu.querySelectorAll('.at-item').forEach((el, i) => el.classList.toggle('on', i === active));
+    }
+  }
+
+  function socialView() {
+    const root = h('div', { class: 'view' });
+    let tab = 'ranks';
+
+    const tabs = h('div', { class: 'chip-row' },
+      ['ranks', 'mentions', 'messages'].map((t) => h('button', {
+        class: `chip ${t === tab ? 'on' : ''}`,
+        onclick: () => { tab = t; render(); },
+      }, t)),
+    );
+    const body = h('div', { class: 'social-body' });
+    root.appendChild(tabs);
+    root.appendChild(body);
+
+    function render() {
+      tabs.querySelectorAll('.chip').forEach((c, i) => c.classList.toggle('on', i === ['ranks', 'mentions', 'messages'].indexOf(tab)));
+      body.innerHTML = '';
+      if (tab === 'ranks') renderRanks();
+      else if (tab === 'mentions') renderMentions();
+      else renderMessages();
+    }
+
+    function renderRanks() {
+      const addRow = h('div', { class: 'rank-add' },
+        h('input', { class: 'input', id: 'rank-user', placeholder: '@username' }),
+        h('select', { class: 'select', id: 'rank-tag' }, RANK_TAGS.map((t) => h('option', { value: t }, t))),
+        h('button', { class: 'btn btn-primary btn-sm', onclick: async (ev) => {
+          const u = ($('#rank-user', body)?.value || '').trim();
+          const tag = $('#rank-tag', body)?.value || 'Friend';
+          if (!u) { toast('error', 'No username', 'Type a username to add'); return; }
+          const btn = ev.currentTarget;
+          btn.disabled = true;
+          try {
+            const d = await apiGet(`/api/user/${encodeURIComponent(u)}`, { ttl: 0 });
+            const real = d && (d.user || d);
+            if (!real || !real.username) throw new Error('User not found');
+            const list = getFriends();
+            if (list.some((x) => x.username.toLowerCase() === real.username.toLowerCase())) throw new Error('Already in your ranks');
+            list.push({ username: real.username, tag, addedAt: Date.now() });
+            saveFriends(list);
+            toast('success', 'Rank added', `@${real.username} → ${tag}`);
+            render();
+          } catch (e) {
+            toast('error', 'Could not add', e.message || 'Check the username');
+            btn.disabled = false;
+          }
+        } }, icon('plus', 13), ' Add'),
+      );
+      body.appendChild(h('div', { class: 'card' },
+        sectionTitle('Ranks', 'at', h('span', { class: 'card-note' }, 'local labels · nothing forged server-side')),
+        addRow,
+        h('div', { class: 'card-hint' }, 'Tag traders you care about. Rank chips render across the client and, with Friend Tags enabled, on rugplay.com comments too.'),
+      ));
+
+      const list = getFriends();
+      const grid = h('div', { class: 'rank-grid' });
+      body.appendChild(grid);
+      if (!list.length) {
+        grid.appendChild(emptyState('No ranks yet', 'Add a trader to start tagging', 'at'));
+        return;
+      }
+      list.forEach((f) => {
+        const sel = h('select', { class: 'select select-sm', onchange: () => {
+          const l = getFriends();
+          const hit = l.find((x) => x.username === f.username);
+          if (hit) { hit.tag = sel.value; saveFriends(l); render(); }
+        } }, RANK_TAGS.map((t) => h('option', { value: t, selected: f.tag === t }, t)));
+        const card = h('div', { class: 'rank-card' },
+          avatar(f.username, 30),
+          h('div', { class: 'rank-main' },
+            h('div', { class: 'rank-user' }, '@' + f.username, rankChip(f.username)),
+            h('div', { class: 'rank-sub mono' }, 'tagged ' + timeAgo(f.addedAt)),
+          ),
+          h('div', { class: 'rank-actions' },
+            h('button', { class: 'btn btn-ghost btn-sm', title: 'Profile', onclick: () => profileModal(f.username) }, icon('user', 12)),
+            h('button', { class: 'btn btn-ghost btn-sm', title: 'Send BUSS', onclick: () => transferModal(f.username) }, icon('send', 12)),
+            h('button', { class: 'btn btn-ghost btn-sm', title: 'Block on site', onclick: async () => {
+              try { await apiPost(`/api/user/${encodeURIComponent(f.username)}/block`, {}); toast('success', 'Blocked', `@${f.username} added to your block list`); } catch (e) { toast('error', 'Block failed', e.message); }
+            } }, icon('ban', 12)),
+            h('button', { class: 'btn btn-ghost btn-sm', title: 'Remove rank', onclick: () => {
+              saveFriends(getFriends().filter((x) => x.username !== f.username));
+              toast('info', 'Rank removed', '@' + f.username);
+              render();
+            } }, icon('x', 12)),
+          ),
+          sel,
+        );
+        grid.appendChild(card);
+      });
+    }
+
+    function renderMentions() {
+      const listEl = h('div', { class: 'mention-list' });
+      const markBtn = h('button', { class: 'btn btn-ghost btn-sm', onclick: async () => {
+        try { await apiPatch('/api/notifications', { markAsRead: true }); toast('success', 'Mentions read', 'All marked as read'); render(); } catch (e) { toast('error', 'Failed', e.message); }
+      } }, icon('check', 12), ' Mark all read');
+      body.appendChild(h('div', { class: 'card' },
+        sectionTitle('Mentions', 'at', markBtn),
+        h('div', { class: 'card-hint' }, 'Real MENTION notifications — when someone @mentions you in a comment, the server pings you here.'),
+        listEl,
+      ));
+      listEl.appendChild(h('div', { class: 'skeleton-block' }, skeleton('100%', '60px')));
+      apiGet('/api/notifications', { ttl: 8000 })
+        .then((d) => {
+          const all = asArray(d && d.notifications);
+          const list = all.filter((n) => n.type === 'MENTION');
+          listEl.innerHTML = '';
+          if (!list.length) { listEl.appendChild(emptyState('No mentions yet', 'Get @mentioned in a comment and it lands here', 'at')); return; }
+          list.slice(0, 40).forEach((n) => {
+            const link = n.link || '';
+            const sym = (link.match(/\/coin\/([A-Za-z0-9]+)/) || [])[1];
+            listEl.appendChild(h('div', { class: `mention-row ${n.isRead ? '' : 'unread'}` },
+              h('span', { class: 'mention-dot' }),
+              h('div', { class: 'mention-main' },
+                h('div', { class: 'mention-title' }, n.title || 'Mention'),
+                h('div', { class: 'mention-msg' }, n.message || ''),
+                h('div', { class: 'mention-meta mono' }, (n.isRead ? 'read' : 'unread') + ' · ' + timeAgo(new Date(n.createdAt).getTime())),
+              ),
+              sym ? h('button', { class: 'btn btn-ghost btn-sm', onclick: () => openCoin(sym) }, 'Open ' + sym) : null,
+            ));
+          });
+        })
+        .catch((e) => { listEl.innerHTML = ''; listEl.appendChild(errorState(e.message)); });
+    }
+
+    function renderMessages() {
+      const symIn = h('input', { class: 'input', placeholder: 'Coin symbol (e.g. BUSS)', value: (getWatchlist()[0] || 'BUSS') });
+      const msgIn = h('input', { class: 'input', placeholder: '@mention someone or just talk…' });
+      attachMentionAutocomplete(msgIn, () => [...new Set([...getFriends().map((f) => f.username), 'BUSS'])].filter(Boolean));
+      const feed = h('div', { class: 'mention-list' });
+      let lastSym = '';
+
+      const loadFeed = () => {
+        const sym = (symIn.value || '').trim().toUpperCase();
+        if (!sym) return;
+        lastSym = sym;
+        feed.innerHTML = '';
+        feed.appendChild(h('div', { class: 'skeleton-block' }, skeleton('100%', '60px')));
+        apiGet(`/api/coin/${sym}/comments`, { ttl: 8000 })
+          .then((d) => {
+            const list = asArray(d && d.comments);
+            feed.innerHTML = '';
+            if (!list.length) { feed.appendChild(emptyState('No comments on ' + sym, 'Be the first to speak', 'send')); return; }
+            list.slice(0, 20).forEach((cm) => {
+              const uname = cm.username || cm.userUsername;
+              feed.appendChild(h('div', { class: 'mention-row' },
+                avatar(uname || 'anon', 24),
+                h('div', { class: 'mention-main' },
+                  h('div', { class: 'mention-title' }, '@' + (uname || 'anon'), rankChip(uname)),
+                  h('div', { class: 'mention-msg' }, cm.content || ''),
+                  h('div', { class: 'mention-meta mono' }, cm.createdAt ? timeAgo(new Date(cm.createdAt).getTime()) : ''),
+                ),
+                isMod('likes') && cm.id ? h('button', { class: 'like-btn', onclick: async () => {
+                  try { await apiPost(`/api/coin/${sym}/comments/${cm.id}/like`, {}); loadFeed(); } catch (e) { toast('error', 'Could not like', e.message); }
+                } }, icon('heart', 12), h('span', {}, String(num(cm.likeCount ?? cm.likesCount ?? cm.likes ?? cm.like_count, 0)))) : null,
+              ));
+            });
+          })
+          .catch((e) => { feed.innerHTML = ''; feed.appendChild(errorState(e.message)); });
+      };
+
+      body.appendChild(h('div', { class: 'card' },
+        sectionTitle('Messages', 'send'),
+        h('div', { class: 'card-hint' }, 'Coin comments are RugPlay\'s chat. Write here, @mention a friend, and they get a real notification. Uses the real comment endpoint.'),
+        h('div', { class: 'msg-compose' },
+          symIn,
+          msgIn,
+          h('button', { class: 'btn btn-primary btn-sm', onclick: async (ev) => {
+            const sym = (symIn.value || '').trim().toUpperCase();
+            const content = (msgIn.value || '').trim();
+            if (!sym || !content) { toast('error', 'Message incomplete', 'Coin symbol and message required'); return; }
+            const btn = ev.currentTarget;
+            btn.disabled = true;
+            try {
+              await apiPost(`/api/coin/${sym}/comments`, { content });
+              msgIn.value = '';
+              toast('success', 'Message sent', `posted on ${sym}`);
+              loadFeed();
+            } catch (e) {
+              toast('error', 'Could not send', e.message);
+              btn.disabled = false;
+            }
+          } }, icon('send', 13), ' Send'),
+        ),
+        h('button', { class: 'btn btn-ghost btn-sm', onclick: loadFeed }, icon('refresh', 12), ' Reload thread'),
+        feed,
+      ));
+      loadFeed();
+    }
+
+    render();
+    return root;
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -5643,6 +6106,8 @@
     { id: 'prestige', label: 'Prestige', icon: 'crown' },
     { id: 'shop', label: 'Shop', icon: 'box' },
     { id: 'account', label: 'Account', icon: 'user' },
+    { group: 'Social' },
+    { id: 'social', label: 'Social', icon: 'at' },
     { group: 'Client' },
     { id: 'mods', label: 'Mods', icon: 'sliders' },
   ];
@@ -5661,7 +6126,8 @@
     prestige: ['Prestige', 'the real $100k → $25M reset ladder'],
     shop: ['Shop', 'crates · name colors · gems'],
     account: ['Account', 'promo codes · API key · blocks · volume'],
-    mods: ['Mods', '200 mods · every one runs on real endpoints'],
+    social: ['Social', 'friends · ranks · mentions · messages'],
+    mods: ['Mods', MODS.length + ' mods · every one runs on real endpoints'],
     coin: ['Coin Terminal', ''],
   };
 
@@ -5678,6 +6144,7 @@
       case 'prestige': return prestigeView();
       case 'shop': return shopView();
       case 'account': return accountView();
+      case 'social': return socialView();
       case 'hopium': return param ? hopiumDetail(param) : hopiumView();
       case 'gamble': return gambleView();
       case 'mods': return modsView();
@@ -5906,7 +6373,7 @@
         h('div', { class: 'credits-name' }, 'Candle Client'),
         h('div', { class: 'credits-ver mono' }, 'v' + VERSION),
         h('div', { class: 'credits-line' }, 'built by ', h('span', { class: 'credit-name' }, DEVELOPER)),
-        h('div', { class: 'credits-line dim' }, 'a client for rugplay · 200 mods · zero fakes'),
+        h('div', { class: 'credits-line dim' }, `a client for rugplay · ${MODS.length} mods · zero fakes`),
         h('button', { class: 'btn btn-primary', onclick: () => wrap.remove() }, 'Close'),
       ),
     );

@@ -8,3 +8,17 @@ preview.html
 
 # Leftover scraper state
 .radar_seen.json
+
+# Discord server project (separate from the client repo)
+discord-*.mjs
+discord-*.md
+discord-*.html
+discord-*.png
+banner.html
+splash.html
+emoji-*.html
+emojis/
+bot-logo.*
+logo-preview.html
+server-banner.png
+server-splash.png
