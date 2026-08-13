@@ -1,0 +1,10 @@
+# Generated — rebuild with `node build-preview.js`
+preview.html
+
+# Dev metadata / local state
+.freebuff/
+*.log
+*.err
+
+# Leftover scraper state
+.radar_seen.json
