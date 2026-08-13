@@ -2,6 +2,19 @@
 
 All notable changes to Candle Client are listed here. The format is plain on purpose.
 
+## v2.0.0 - 2026-08-13
+
+The Real-Time Engine and the platform explorer.
+
+- **Real-Time Engine**: connects to RugPlay's public WebSocket (wss://ws.rugplay.com, protocol taken from the repo's own `website/websocket` server). The Live Feed streams trades the moment they land, the status bar shows a live socket dot, and price updates and arcade activity arrive without polling.
+- **Large Trade Alerts**: a toast fires when a $100k+ trade clears, straight off the socket.
+- **Arcade view**: your lifetime record from `/api/user/arcade-stats` (wins, losses, played, win rate) plus a live activity feed from the socket.
+- **Routes explorer**: a searchable reference of 44 real API routes with a try-it runner for GET routes (placeholders included), write routes clearly marked.
+- **Achievement walls**: look up any trader by username and see their unlocked achievements, from the Achievements view or any profile.
+- **Hopium composer**: propose questions with the real rules surfaced ($100k+ balance, 2 per hour, 10-200 characters, web-search auto-resolution).
+- **Three new on-site chips**: Live Price (coin pages, updates from the socket), Live Arcade (/arcade), and Large Trades (everywhere).
+- 10 new mods, 215 total. Version bumped to 2.0.0.
+
 ## v1.1.1 - 2026-08-12
 
 Coin-to-coin transfers.

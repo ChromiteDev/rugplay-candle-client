@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Candle Client for RugPlay
 // @namespace    candle.rugplay
-// @version      1.1.1
-// @description  Candle Client for RugPlay by Chromites. Right Shift opens the client. 205 mods in 13 categories, all off until enabled. On-site mods render directly on rugplay.com, the rest live inside the client. Every mod runs on real RugPlay API endpoints and real platform rules. Nothing is faked.
+// @version      2.0.0
+// @description  Candle Client for RugPlay by Chromites. Right Shift opens the client. 215 mods in 13 categories, all off until enabled. On-site mods render directly on rugplay.com, the rest live inside the client. Every mod runs on real RugPlay API endpoints and real platform rules. Nothing is faked.
 // @author       Chromites
 // @match        https://rugplay.com/*
 // @match        http://localhost:5173/*
@@ -14,9 +14,9 @@
 // ==/UserScript==
 
 /*
- * Candle Client v1.1.1, by Chromites.
+ * Candle Client v2.0.0, by Chromites.
  *
- * Right Shift toggles the client. 205 mods in 13 categories, all OFF by default.
+ * Right Shift toggles the client. 215 mods in 13 categories, all OFF by default.
  * Flip a mod on and it takes effect. The Site category renders directly on the
  * page (a HUD over rugplay.com), the rest enhance the client window. All
  * backed by real RugPlay endpoints and the real server rules from the repo:
@@ -46,7 +46,7 @@
   // Constants
   // ════════════════════════════════════════════════════════════════════
 
-  const VERSION = '1.1.1';
+  const VERSION = '2.0.0';
   const DEVELOPER = 'Chromites';
   const SWAP_FEE = 0.003;
 
@@ -123,7 +123,7 @@
     { id: '1d', label: '1d', hours: 2160 },
   ];
 
-  // ── Mod registry - 205 mods across 13 categories, every one real ───
+  // ── Mod registry - 215 mods across 13 categories, every one real ───
 
   const MODS = [
     // Site (35) - mods that render directly on rugplay.com
@@ -344,6 +344,17 @@
     { id: 'autoclose', name: 'Auto Close', cat: 'Client', icon: 'x', def: false, desc: 'Close the menu when clicking the backdrop.' },
     { id: 'keyhints', name: 'Key Hints', cat: 'Client', icon: 'key', def: false, desc: 'RShift / Esc hints in the footer.' },
     { id: 'statusbar', name: 'Status Bar', cat: 'Client', icon: 'activity', def: false, desc: 'Clock and data freshness in the window footer.' },
+    // v2.0 - the real-time engine and the platform explorer
+    { id: 'realtime', name: 'Real-Time Engine', cat: 'Client', icon: 'zap', def: false, desc: 'Connect to RugPlay public WebSocket: live trades, prices, arcade activity.' },
+    { id: 'routers', name: 'Routes Explorer', cat: 'Client', icon: 'book', def: false, desc: 'Searchable reference of every real API route with a try-it runner.' },
+    { id: 'largetrade', name: 'Large Trade Alerts', cat: 'Market', icon: 'bell', def: false, desc: 'Toast when a $100k+ trade lands, straight from the live socket.' },
+    { id: 'arcadelive', name: 'Arcade Live', cat: 'Gamble', icon: 'dice', def: false, desc: 'Real-time arcade activity feed from the socket.' },
+    { id: 'arcadestats', name: 'Arcade Record', cat: 'Gamble', icon: 'chart', def: false, desc: 'Your lifetime arcade wins and losses from /api/user/arcade-stats.' },
+    { id: 'hopiumcreate', name: 'Hopium Composer', cat: 'Hopium', icon: 'send', def: false, desc: 'Propose questions with the real rules: $100k+ balance, 2 per hour.' },
+    { id: 'achwalls', name: 'Achievement Walls', cat: 'Achievements', icon: 'award', def: false, desc: 'See any trader unlocked achievements from their public profile.' },
+    { id: 'siteliveprice', name: 'Site Live Price', cat: 'Site', icon: 'tag', def: false, desc: 'Onsite coin price chip that updates from the live socket.' },
+    { id: 'sitelivearcade', name: 'Site Arcade Live', cat: 'Site', icon: 'dice', def: false, desc: 'Onsite live arcade activity chip on /arcade.' },
+    { id: 'sitelargetrades', name: 'Site Large Trades', cat: 'Site', icon: 'zap', def: false, desc: 'Onsite latest $100k+ trade chip on every page.' },
   ];
 
   // ════════════════════════════════════════════════════════════════════
@@ -558,6 +569,92 @@
       else setAuthed(authed !== null ? authed : false);
     }
     return authed;
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Real-time engine - RugPlay's public WebSocket (wss://ws.rugplay.com)
+  // Protocol from the repo (website/websocket/src/main.ts):
+  //   send {type:'subscribe',channel:'trades:all'|'trades:large'}, {type:'set_coin',coinSymbol}, {type:'set_user',userId}
+  //   recv live-trade / all-trades / price_update / arcade_activity /
+  //        new_comment / comment_liked / notification / ping
+  // ════════════════════════════════════════════════════════════════════
+
+  let ws = null;
+  let wsTimer = null;
+  let wsReconnectTimer = null;
+  let wsAlive = false;
+  let wsMyId = null;
+
+  function wsUrl() {
+    // the live site injects PUBLIC_WEBSOCKET_URL into its inline env config
+    try {
+      const html = document.documentElement.outerHTML;
+      const m = html.match(/PUBLIC_WEBSOCKET_URL"?:\s*"([^"]+)"/);
+      if (m && m[1]) return m[1].replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
+    } catch (e) { /* fall through to default */ }
+    return 'wss://ws.rugplay.com';
+  }
+
+  function wsSend(obj) {
+    if (ws && ws.readyState === 1) {
+      try { ws.send(JSON.stringify(obj)); } catch (e) { /* ignore */ }
+    }
+  }
+
+  function wsScheduleReconnect() {
+    if (wsReconnectTimer) return;
+    wsReconnectTimer = setTimeout(() => {
+      wsReconnectTimer = null;
+      wsConnect();
+    }, 5000);
+  }
+
+  function wsConnect() {
+    if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+    try {
+      ws = new WebSocket(wsUrl());
+    } catch (e) {
+      wsScheduleReconnect();
+      return;
+    }
+    ws.onopen = () => {
+      wsAlive = true;
+      bus.emit('ws', true);
+      wsSend({ type: 'subscribe', channel: 'trades:all' });
+      wsSend({ type: 'subscribe', channel: 'trades:large' });
+      wsSend({ type: 'set_coin', coinSymbol: '@global' });
+      if (wsMyId) wsSend({ type: 'set_user', userId: String(wsMyId) });
+    };
+    ws.onmessage = (ev) => {
+      let m = null;
+      try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (!m || !m.type) return;
+      if (m.type === 'ping') { wsSend({ type: 'pong' }); return; }
+      bus.emit('ws:' + m.type, m);
+    };
+    ws.onclose = () => {
+      wsAlive = false;
+      bus.emit('ws', false);
+      ws = null;
+      wsScheduleReconnect();
+    };
+    ws.onerror = () => { try { ws.close(); } catch (e) { /* ignore */ } };
+  }
+
+  function wsStart() {
+    if (wsTimer) return;
+    wsConnect();
+    wsTimer = setInterval(() => {
+      if (ws && ws.readyState === 2) wsConnect();
+    }, 15000);
+  }
+
+  function wsStop() {
+    if (wsTimer) { clearInterval(wsTimer); wsTimer = null; }
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    if (ws) { try { ws.close(); } catch (e) { /* ignore */ } ws = null; }
+    wsAlive = false;
+    bus.emit('ws', false);
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -1318,6 +1415,9 @@
               }
             }).catch(() => {});
           }
+        }
+        if (isMod('achwalls') && u.username) {
+          body.appendChild(h('button', { class: 'btn btn-ghost btn-sm', style: 'width:100%', onclick: () => achievementWallModal(u.username) }, icon('award', 13), ' Achievement wall'));
         }
         if (isMod('blockprofile') && u.username) {
           body.appendChild(confirmBtn(`Block @${u.username}`, async () => {
@@ -2510,7 +2610,9 @@
     const nearBtn = isMod('nearresolve') ? h('button', { class: 'btn btn-ghost btn-sm' }, '⚡ resolving < 24h') : null;
     if (nearBtn) nearBtn.addEventListener('click', () => { nearOnly = !nearOnly; nearBtn.classList.toggle('on', nearOnly); load(); });
     const list = h('div', { class: 'hopium-list' });
-    root.appendChild(h('div', { class: 'market-toolbar' }, statusSel, nearBtn));
+    root.appendChild(h('div', { class: 'market-toolbar' }, statusSel, nearBtn,
+      isMod('hopiumcreate') ? h('button', { class: 'btn btn-ghost btn-sm', onclick: () => hopiumComposer(() => load()) }, icon('send', 13), ' Propose') : null,
+    ));
     if (isMod('qcounts')) root.appendChild(countsRow);
     if (isMod('hotmarkets')) root.appendChild(hotRow);
     root.appendChild(list);
@@ -3030,9 +3132,29 @@
           status.textContent = 'offline - retrying';
         });
     }
+    const offWs = [];
+    if (isMod('realtime')) {
+      const prependTrade = (t) => {
+        if (!t) return;
+        const isBuy = (t.type || '').toUpperCase() === 'BUY';
+        const ts = t.timestamp ? Number(t.timestamp) * (t.timestamp < 1e12 ? 1000 : 1) : Date.now();
+        list.prepend(h('button', { class: 'feed-row', onclick: () => openCoin(t.coinSymbol || t.symbol) },
+          avatar(t.username || t.symbol, 24),
+          h('div', { class: 'mini-main' },
+            h('div', { class: 'mini-name' }, (t.coinSymbol || t.symbol || '-'), ' ', h('span', { class: isBuy ? 'up' : 'down' }, isBuy ? 'BUY' : 'SELL')),
+            h('div', { class: 'mini-sub' }, (t.username || 'anon') + (ts ? ' - ' + timeAgo(ts) : '')),
+          ),
+          h('span', { class: 'mono' }, fmtBuss(num(t.totalValue ?? t.totalBaseCurrencyAmount ?? t.amount))),
+        ));
+        while (list.children.length > 60) list.lastChild.remove();
+        status.textContent = 'live via socket';
+      };
+      offWs.push(bus.on('ws:live-trade', (m) => prependTrade(m && m.data)));
+      offWs.push(bus.on('ws:all-trades', (m) => prependTrade(m && m.data)));
+    }
     load();
     timer = setInterval(load, Math.max(4, num(settings.tickerSeconds, 8)) * 1000);
-    onCleanup(() => clearInterval(timer));
+    onCleanup(() => { clearInterval(timer); offWs.forEach((fn) => fn()); });
     return root;
   }
 
@@ -3054,6 +3176,14 @@
       const sInp = h('input', { class: 'input search-input', placeholder: 'Search achievements…' });
       sInp.addEventListener('input', debounce((ev) => { query = ev.target.value.trim().toLowerCase(); load(); }, 300));
       root.appendChild(sInp);
+    }
+
+    if (isMod('achwalls')) {
+      const wallRow = h('div', { class: 'market-toolbar' },
+        h('input', { class: 'input search-input', placeholder: 'Look up any trader...' }),
+        h('button', { class: 'btn btn-ghost btn-sm', onclick: () => { const v = wallRow.querySelector('input').value.trim(); if (v) achievementWallModal(v); } }, icon('award', 13), ' Achievement wall'),
+      );
+      root.appendChild(wallRow);
     }
 
     // difficulty + category filters (mod-gated)
@@ -5019,6 +5149,43 @@
     .btn-danger { background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.45); color: var(--red-h); }
     .btn-danger:hover { background: var(--red); color: #fff; }
     .recent-unlock { margin-bottom: 10px; }
+
+    /* ── v2.0: realtime engine + explorer + walls ─────────────────── */
+    .ws-dot { display: inline-flex; align-items: center; gap: 4px; color: var(--dim); }
+    .ws-dot.on { color: var(--up); }
+    .ws-dot.on svg { filter: drop-shadow(0 0 5px rgba(52,211,153,.8)); }
+    .ws-dot.off { color: var(--dim); }
+    .route-count { font-size: 11px; color: var(--mut); margin-left: auto; }
+    .route-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .route-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border: 1px solid var(--bd); background: var(--bg2); border-radius: 10px; padding: 8px 12px; }
+    .route-row.open { border-color: rgba(239,68,68,.4); }
+    .route-method { font-size: 9.5px; font-weight: 800; letter-spacing: .08em; padding: 2px 7px; border-radius: 5px; }
+    .m-get { background: rgba(52,211,153,.13); color: #34d399; }
+    .m-post { background: rgba(96,165,250,.13); color: #60a5fa; }
+    .m-patch { background: rgba(251,191,36,.13); color: #fbbf24; }
+    .route-path { font-size: 11.5px; color: var(--tx); flex: 1; min-width: 180px; }
+    .route-desc { font-size: 11px; color: var(--mut); }
+    .route-auth { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #fbbf24; }
+    .route-auth.pub { color: var(--up); }
+    .route-expand { border: 1px solid var(--bd); background: transparent; color: var(--mut); border-radius: 6px; padding: 2px 9px; cursor: pointer; font-size: 11px; }
+    .route-detail { flex-basis: 100%; display: none; flex-direction: column; gap: 8px; padding-top: 8px; }
+    .route-detail.open { display: flex; }
+    .route-in { flex: 1; min-width: 120px; }
+    .route-actions { display: flex; gap: 8px; align-items: center; }
+    .route-hint { font-size: 11px; color: var(--dim); font-style: italic; }
+    .route-out { background: rgba(0,0,0,.35); border: 1px solid var(--bd); border-radius: 8px; padding: 10px 12px; font: 11px/1.5 ui-monospace, 'SF Mono', Consolas, monospace; color: #d4d4d8; white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow: auto; margin: 0; }
+    .modal-lg { width: min(620px, 94%) !important; }
+    .composer-ta { width: 100%; min-height: 88px; background: rgba(0,0,0,.3); border: 1px solid var(--bd); border-radius: 10px; color: var(--tx); padding: 10px 12px; font: inherit; resize: vertical; outline: none; }
+    .composer-ta:focus { border-color: rgba(239,68,68,.5); }
+    .composer-err { font-size: 12px; color: var(--red-h); margin-top: 8px; min-height: 14px; }
+    .ach-wall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+    .ach-wall-card { border: 1px solid var(--bd); background: var(--bg2); border-radius: 10px; padding: 10px 12px; }
+    .ach-wall-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .ach-wall-ico { display: inline-flex; }
+    .ach-wall-diff { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .ach-wall-name { font-weight: 700; font-size: 12.5px; color: var(--tx); }
+    .ach-wall-desc { font-size: 11px; color: var(--mut); margin-top: 2px; line-height: 1.4; }
+    .wall-sum { font-size: 11px; color: var(--mut); }
   `;
 
   // ════════════════════════════════════════════════════════════════════
@@ -5093,6 +5260,8 @@
     .cc-rank-tag.tag-watch { background: rgba(96,165,250,.14); color: #60a5fa; border: 1px solid rgba(96,165,250,.4); }
     .cc-rank-tag.tag-rival { background: rgba(239,68,68,.16); color: #f87171; border: 1px solid rgba(239,68,68,.45); }
     .cc-friendtags { font-size: 11px; }
+    .cc-chip.live { border-color: rgba(52,211,153,.5); box-shadow: 0 0 16px rgba(52,211,153,.22), 0 10px 28px rgba(0,0,0,.4); }
+    .cc-chip.live .cc-chip-label::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,.9); margin-right: 5px; }
     @media (max-width: 720px) { .cc-hud { display: none; } .cc-hud-live { display: none; } }
   `;
 
@@ -5297,8 +5466,63 @@
       case 'mentionradar': return onsiteMentionRadar();
       case 'friendtags': return onsiteFriendTags();
       case 'quicktransfer': return onsiteQuickTransfer();
+      case 'siteliveprice': return onsiteLivePrice();
+      case 'sitelivearcade': return onsiteLiveArcade();
+      case 'sitelargetrades': return onsiteLargeTrades();
       default: return null;
     }
+  }
+
+  // ── live socket widgets (v2.0) ──────────────────────────────────────
+  function onsiteLivePrice() {
+    const sym = coinSymFromPath(location.pathname);
+    const b = document.createElement('span');
+    b.className = 'cc-chip-body mono';
+    const el = hudChip('Live Price', b);
+    const off = bus.on('ws:price_update', (m) => {
+      if (!m || m.coinSymbol !== sym || !el.isConnected) return;
+      if (m.currentPrice !== undefined) {
+        b.textContent = fmtPrice(num(m.currentPrice)) + (m.change24h !== undefined ? ' - ' + fmtPct(num(m.change24h)) : '');
+        el.classList.add('live');
+      }
+    });
+    coinData().then((d) => {
+      const c = d && d.coin;
+      if (c && c.currentPrice !== undefined) b.textContent = fmtPrice(num(c.currentPrice));
+    }).catch(() => {});
+    return { el, cleanup: off };
+  }
+
+  function onsiteLiveArcade() {
+    const b = document.createElement('span');
+    b.className = 'cc-chip-body';
+    const el = hudChip('Live Arcade', b);
+    const off = bus.on('ws:arcade_activity', (m) => {
+      const a = m && m.arcadeActivity;
+      if (!a || !el.isConnected) return;
+      b.textContent = (a.username || '?') + ' - ' + (a.game || '?') + ' ' + (a.won ? 'won' : 'lost') + ' ' + fmtBuss(num(a.amount, 0));
+      el.classList.add('live');
+    });
+    return { el, cleanup: off };
+  }
+
+  function onsiteLargeTrades() {
+    const b = document.createElement('span');
+    b.className = 'cc-chip-body mono';
+    const el = hudChip('Large Trades', b);
+    const pick = (m) => {
+      const t = m && m.data;
+      if (!t || !el.isConnected) return;
+      const v = num(t.totalValue ?? t.totalBaseCurrencyAmount ?? t.amount, 0);
+      if (v < 100000) return;
+      b.textContent = (t.coinSymbol || t.symbol || '?') + ' ' + (t.type || '').toUpperCase() + ' ' + fmtBuss(v) + ' by @' + (t.username || '?');
+      el.classList.add('live');
+    };
+    const offs = [
+      bus.on('ws:live-trade', pick),
+      bus.on('ws:all-trades', pick),
+    ];
+    return { el, cleanup: () => offs.forEach((fn) => fn()) };
   }
 
   // ── new site widgets (v1.0.0 · 200 mods) ────────────────────────────
@@ -5733,7 +5957,7 @@
   }
 
   // ── mount/unmount ────────────────────────────────────────────────────
-  const ONSITE_MODS = ['locktimer', 'coinage', 'athmarker', 'poolwatch', 'devdom', 'pricealerts', 'holderradar', 'livefeed', 'seasoncard', 'treemap', 'marketstats', 'movers', 'launchkit', 'gemswallet', 'networth', 'prestigestatus', 'crateodds', 'riskmeter', 'qdepth', 'countdown', 'siteprice', 'sitechange', 'sitemcap', 'sitevol', 'sitefeed', 'sitecomments', 'sitehopium', 'siteleader', 'siteach', 'siterewards', 'sitekeys', 'sitearcade', 'sitetransfers', 'siteseasonjoin', 'siteusername', 'mentionradar', 'friendtags', 'quicktransfer'];
+  const ONSITE_MODS = ['locktimer', 'coinage', 'athmarker', 'poolwatch', 'devdom', 'pricealerts', 'holderradar', 'livefeed', 'seasoncard', 'treemap', 'marketstats', 'movers', 'launchkit', 'gemswallet', 'networth', 'prestigestatus', 'crateodds', 'riskmeter', 'qdepth', 'countdown', 'siteprice', 'sitechange', 'sitemcap', 'sitevol', 'sitefeed', 'sitecomments', 'sitehopium', 'siteleader', 'siteach', 'siterewards', 'sitekeys', 'sitearcade', 'sitetransfers', 'siteseasonjoin', 'siteusername', 'mentionradar', 'friendtags', 'quicktransfer', 'siteliveprice', 'sitelivearcade', 'sitelargetrades'];
 
   function isOnsiteMod(id) {
     return ONSITE_MODS.includes(id);
@@ -5747,6 +5971,7 @@
     hudWidgets.forEach((w, mod) => {
       if (!wantedSet.has(mod)) {
         if (w.timer) clearInterval(w.timer);
+        if (w.cleanup) w.cleanup();
         w.el.remove();
         hudWidgets.delete(mod);
       }
@@ -5779,6 +6004,9 @@
     if (mod === 'friendtags') return /^\/coin\//.test(p);
     if (mod === 'quicktransfer') return /^\/user\//.test(p) && !/^\/user\/(me|settings)/.test(p);
     if (mod === 'livefeed' || mod === 'seasoncard') return true;
+    if (mod === 'siteliveprice') return /^\/coin\//.test(p);
+    if (mod === 'sitelivearcade') return /^\/arcade/.test(p);
+    if (mod === 'sitelargetrades') return true;
     return false;
   }
 
@@ -6144,6 +6372,7 @@
   let navEl = null;
   let statusBar = null;
   let statusClock = null;
+  let statusDot = null;
   let viewStack = [];
   let viewCleanups = [];
   let minimized = false;
@@ -6168,6 +6397,7 @@
     { group: 'Bet' },
     { id: 'hopium', label: 'Hopium', icon: 'trend' },
     { id: 'gamble', label: 'Gamble Lab', icon: 'dice' },
+    { id: 'arcade', label: 'Arcade', icon: 'dice' },
     { group: 'Account' },
     { id: 'portfolio', label: 'Portfolio', icon: 'wallet' },
     { id: 'achievements', label: 'Achievements', icon: 'award' },
@@ -6178,6 +6408,7 @@
     { group: 'Social' },
     { id: 'social', label: 'Social', icon: 'at' },
     { group: 'Client' },
+    { id: 'routes', label: 'Routes', icon: 'book' },
     { id: 'mods', label: 'Mods', icon: 'sliders' },
   ];
 
@@ -6189,6 +6420,8 @@
     leaders: ['Leaders', 'the 24h extraction leaderboard'],
     hopium: ['Hopium', 'prediction markets · real pool odds'],
     gamble: ['Gamble Lab', 'EV calculators built from the real rules'],
+    arcade: ['Arcade', 'live activity · your lifetime record'],
+    routes: ['Routes', 'the platform API, searchable'],
     portfolio: ['Portfolio', 'your bag · your cash · your gems'],
     achievements: ['Achievements', 'the full catalog with real rewards'],
     rewards: ['Daily Rewards', 'streaks, tiers and prestige bonuses'],
@@ -6216,6 +6449,8 @@
       case 'social': return socialView();
       case 'hopium': return param ? hopiumDetail(param) : hopiumView();
       case 'gamble': return gambleView();
+      case 'arcade': return arcadeView();
+      case 'routes': return routesView();
       case 'mods': return modsView();
       case 'coin': return coinView(param);
       default: return overviewView();
@@ -6306,6 +6541,289 @@
   function toggleMaximize() {
     maximized = !maximized;
     windowEl.classList.toggle('max', maximized);
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Arcade - live activity + lifetime record
+  // ════════════════════════════════════════════════════════════════════
+
+  function arcadeView() {
+    const root = h('div', { class: 'view' });
+
+    if (isMod('arcadestats')) {
+      const rec = h('div', { class: 'card' });
+      root.appendChild(rec);
+      const statsRow = h('div', { class: 'market-stats mono' });
+      rec.appendChild(statsRow);
+      apiGet('/api/user/arcade-stats', { ttl: 30000 })
+        .then((d) => {
+          const wins = num(d && d.wins, 0);
+          const losses = num(d && d.losses, 0);
+          const total = num(d && d.totalPlayed, wins + losses);
+          const wr = total > 0 ? (wins / total) * 100 : 0;
+          statsRow.innerHTML = '';
+          statsRow.appendChild(h('span', {}, icon('dice', 11), ' lifetime record - ', h('span', { class: 'up' }, wins + ' wins'), ' - ', h('span', { class: 'down' }, losses + ' losses'), ' - ', h('span', {}, total + ' played'), ' - ', h('span', {}, 'win rate ' + wr.toFixed(1) + '%')));
+        })
+        .catch((e) => {
+          statsRow.innerHTML = '';
+          statsRow.appendChild(h('span', {}, e instanceof ApiError && e.status === 401 ? 'sign in to see your arcade record' : 'record unavailable'));
+        });
+    }
+
+    if (isMod('arcadelive')) {
+      const status = h('span', { class: 'live-status' }, 'waiting for socket');
+      root.appendChild(h('div', { class: 'card-head live-head' },
+        h('div', { class: 'card-title' }, icon('dice', 14), h('span', {}, 'Live arcade activity')),
+        status,
+      ));
+      const list = h('div', { class: 'live-list' });
+      root.appendChild(list);
+      const offs = [];
+      const prepend = (a) => {
+        if (!a || !a.username) return;
+        const won = !!a.won;
+        const ts = a.timestamp ? Number(a.timestamp) * (a.timestamp < 1e12 ? 1000 : 1) : Date.now();
+        list.prepend(h('button', { class: 'feed-row', onclick: () => profileModal(a.username) },
+          avatar(a.username, 24),
+          h('div', { class: 'mini-main' },
+            h('div', { class: 'mini-name' }, a.game || 'arcade', ' ', h('span', { class: won ? 'up' : 'down' }, won ? 'WON' : 'LOST')),
+            h('div', { class: 'mini-sub' }, '@' + a.username + (ts ? ' - ' + timeAgo(ts) : '')),
+          ),
+          h('span', { class: 'mono' }, fmtBuss(num(a.amount, 0))),
+        ));
+        while (list.children.length > 80) list.lastChild.remove();
+        status.textContent = 'live via socket';
+      };
+      offs.push(bus.on('ws:arcade_activity', (m) => prepend(m && m.arcadeActivity)));
+      onCleanup(() => offs.forEach((fn) => fn()));
+    } else {
+      root.appendChild(emptyState('Arcade Live is off', 'Enable the Arcade Live mod to watch real-time activity from the socket', 'dice'));
+    }
+
+    if (!isMod('arcadestats') && !isMod('arcadelive')) {
+      root.appendChild(emptyState('Arcade view', 'Enable Arcade Record and Arcade Live mods to fill this view', 'dice'));
+    }
+    return root;
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Routes explorer - the platform API, searchable, try-it runner
+  // ════════════════════════════════════════════════════════════════════
+
+  const ROUTES = [
+    ['GET', '/api/market', 'The full market list, server-side sorted.', 'public'],
+    ['GET', '/api/coins/top', 'Top coins by market cap.', 'public'],
+    ['GET', '/api/coin/{symbol}', 'One coin: price, cap, pool, creator, lock.', 'public'],
+    ['GET', '/api/coin/{symbol}/chart-history', 'Candles for a timeframe (1m to 1d).', 'public'],
+    ['GET', '/api/coin/{symbol}/holders', 'Top holders with share of supply.', 'public'],
+    ['GET', '/api/coin/{symbol}/comments', 'Comments on a coin, newest first.', 'public'],
+    ['POST', '/api/coin/{symbol}/comments', 'Post a comment. An @mention pings that user.', 'session'],
+    ['POST', '/api/coin/{symbol}/comments/{id}/like', 'Like a comment.', 'session'],
+    ['POST', '/api/coin/{symbol}/trade', 'Swap base currency for coins (0.3% fee).', 'session'],
+    ['GET', '/api/trades/recent', 'Recent trades, with minValue + limit filters.', 'public'],
+    ['GET', '/api/leaderboard', '24h extraction leaderboard.', 'public'],
+    ['GET', '/api/hopium/questions', 'Prediction questions by status.', 'public'],
+    ['GET', '/api/hopium/questions/{id}', 'One question with both sides staked.', 'public'],
+    ['POST', '/api/hopium/questions/{id}/bet', 'Place a YES/NO stake.', 'session'],
+    ['POST', '/api/hopium/questions/create', 'Propose a question ($100k+ balance, 2 per hour).', 'session'],
+    ['GET', '/api/portfolio/total', 'Your cash and coin value.', 'session'],
+    ['GET', '/api/portfolio/summary', 'Your balances and holdings.', 'session'],
+    ['GET', '/api/transactions', 'Your transaction history.', 'session'],
+    ['GET', '/api/achievements', 'Full achievement catalog with progress.', 'session'],
+    ['POST', '/api/achievements/claim', 'Claim a completed achievement reward.', 'session'],
+    ['GET', '/api/user/arcade-stats', 'Your lifetime arcade wins and losses.', 'session'],
+    ['GET', '/api/user/{username}', 'A trader public profile.', 'public'],
+    ['GET', '/api/user/{username}/achievements', 'A trader unlocked achievements.', 'public'],
+    ['POST', '/api/user/{username}/block', 'Block a user (DELETE to unblock).', 'session'],
+    ['POST', '/api/transfer', 'Send cash (1% fee) or coins (no fee) to a user.', 'session'],
+    ['GET', '/api/season', 'Current season, your rank, join stake.', 'session'],
+    ['POST', '/api/season/join', 'Enter the season (holdings liquidated).', 'session'],
+    ['GET', '/api/notifications', 'Your notifications.', 'session'],
+    ['PATCH', '/api/notifications', 'Mark notifications as read.', 'session'],
+    ['POST', '/api/shop/crate', 'Open a crate for gems.', 'session'],
+    ['GET', '/api/shop/inventory', 'Your crates, name colors, gems.', 'session'],
+    ['POST', '/api/shop/equip', 'Equip a name color you own.', 'session'],
+    ['GET', '/api/rewards/claim', 'Daily reward status.', 'session'],
+    ['POST', '/api/rewards/claim', 'Claim the daily reward.', 'session'],
+    ['GET', '/api/prestige', 'Your prestige ladder state.', 'session'],
+    ['POST', '/api/prestige', 'Reset for the next prestige tier.', 'session'],
+    ['POST', '/api/promo/verify', 'Redeem a promo code.', 'session'],
+    ['GET', '/api/keys', 'Your rgpl_ API key and budget.', 'session'],
+    ['POST', '/api/keys/{id}/regenerate', 'Rotate your API key.', 'session'],
+    ['GET', '/api/v1/market', 'Public v1 API market (uses your rgpl_ key).', 'public'],
+    ['GET', '/api/v1/top', 'Public v1 API top coins.', 'public'],
+    ['GET', '/api/v1/coin/{symbol}', 'Public v1 API single coin.', 'public'],
+    ['GET', '/api/v1/holders/{symbol}', 'Public v1 API holders.', 'public'],
+    ['GET', '/api/v1/hopium', 'Public v1 API hopium questions.', 'public'],
+  ];
+
+  function routesView() {
+    const root = h('div', { class: 'view' });
+    if (!isMod('routers')) {
+      root.appendChild(emptyState('Routes Explorer is off', 'Enable the Routes Explorer mod to browse every real API route', 'book'));
+      return root;
+    }
+    const search = h('input', { class: 'input search-input', placeholder: 'Search routes...' });
+    const count = h('span', { class: 'mono route-count' }, ROUTES.length + ' routes - all real');
+    const list = h('div', { class: 'route-list' });
+    root.appendChild(h('div', { class: 'market-toolbar' }, search, count));
+    root.appendChild(list);
+
+    function build(query) {
+      list.innerHTML = '';
+      const q = (query || '').trim().toLowerCase();
+      ROUTES.filter((r) => !q || (r[0] + ' ' + r[1] + ' ' + r[2] + ' ' + r[3]).toLowerCase().includes(q))
+        .forEach((r) => {
+          const detail = h('div', { class: 'route-detail' });
+          const wrap = h('div', { class: 'route-row' },
+            h('span', { class: 'route-method m-' + r[0].toLowerCase() }, r[0]),
+            h('span', { class: 'route-path mono' }, r[1]),
+            h('span', { class: 'route-desc' }, r[2]),
+            h('span', { class: 'route-auth' + (r[3] === 'session' ? '' : ' pub') }, r[3]),
+            h('button', { class: 'route-expand', onclick: () => { detail.classList.toggle('open'); wrap.classList.toggle('open'); } }, '...'),
+          );
+          const isWrite = r[0] !== 'GET';
+          const out = h('pre', { class: 'route-out' });
+          if (isWrite) {
+            detail.appendChild(h('div', { class: 'route-hint' }, 'write route - not callable from the explorer, the client features use it'));
+          } else {
+            const inputs = [];
+            (r[1].match(/\{[^}]+\}/g) || []).forEach((ph) => {
+              const inp = h('input', { class: 'input route-in', placeholder: ph.slice(1, -1), dataset: { token: ph } });
+              inputs.push(inp);
+              detail.appendChild(inp);
+            });
+            const runBtn = h('button', { class: 'btn btn-ghost btn-sm' }, icon('refresh', 12), ' Try it');
+            const run = async () => {
+              let path = r[1];
+              inputs.forEach((inp) => { path = path.replace(inp.dataset.token, inp.value.trim() || inp.dataset.token); });
+              out.textContent = 'fetching...';
+              runBtn.disabled = true;
+              try {
+                const res = await fetch(path, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+                const text = await res.text();
+                let body = text;
+                try { body = JSON.stringify(JSON.parse(text), null, 2); } catch (e) { /* plain text */ }
+                out.textContent = res.status + ' ' + res.statusText + '\n\n' + body;
+              } catch (e) {
+                out.textContent = 'failed: ' + (e && e.message ? e.message : String(e));
+              } finally {
+                runBtn.disabled = false;
+              }
+            };
+            runBtn.addEventListener('click', run);
+            const copyBtn = h('button', { class: 'btn btn-ghost btn-sm' }, icon('tag', 12), ' Copy path');
+            copyBtn.addEventListener('click', () => {
+              const p = r[1].replace(/\{[^}]+\}/g, (ph) => ph);
+              if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(p).catch(() => {});
+              toast('success', 'Copied', p);
+            });
+            detail.appendChild(h('div', { class: 'route-actions' }, runBtn, copyBtn));
+            detail.appendChild(out);
+          }
+          wrap.appendChild(detail);
+          list.appendChild(wrap);
+        });
+      if (!list.children.length) list.appendChild(emptyState('No routes', 'Try a different search', 'search'));
+    }
+
+    search.addEventListener('input', debounce((ev) => build(ev.target.value), 250));
+    build('');
+    return root;
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Achievement walls - any trader unlocked achievements (public)
+  // ════════════════════════════════════════════════════════════════════
+
+  function achievementWallModal(username) {
+    const wrap = h('div', { class: 'modal-back' },
+      h('div', { class: 'modal modal-lg' },
+        h('div', { class: 'modal-head' },
+          h('span', { class: 'modal-title' }, 'Achievements - @' + username),
+          h('button', { class: 'traffic-mini', onclick: () => wrap.remove() }, icon('x', 13)),
+        ),
+        h('div', { class: 'modal-body' }, skeleton()),
+      ),
+    );
+    wrap.addEventListener('click', (ev) => { if (ev.target === wrap) wrap.remove(); });
+    $('.candle-window', shadow).appendChild(wrap);
+    const body = $('.modal-body', wrap);
+    const diffColor = (x) => ({ easy: '#34d399', medium: '#60a5fa', hard: '#c084fc', legendary: '#facc15' }[(x || '').toLowerCase()] || '#9ca3af');
+    apiGet('/api/user/' + encodeURIComponent(username) + '/achievements', { ttl: 30000 })
+      .then((d) => {
+        const list = asArray(d && d.achievements);
+        const unlocked = list.filter((a) => a.unlocked);
+        body.innerHTML = '';
+        body.appendChild(h('div', { class: 'wall-sum mono' }, unlocked.length + ' unlocked - ' + list.length + ' total'));
+        if (!unlocked.length) {
+          body.appendChild(emptyState('Nothing unlocked yet', 'This trader has no achievements yet', 'award'));
+          return;
+        }
+        const grid = h('div', { class: 'ach-wall-grid' });
+        unlocked.forEach((a) => {
+          grid.appendChild(h('div', { class: 'ach-wall-card' },
+            h('div', { class: 'ach-wall-top' },
+              h('span', { class: 'ach-wall-ico', style: 'color:' + diffColor(a.difficulty) }, icon('award', 16)),
+              h('span', { class: 'ach-wall-diff', style: 'color:' + diffColor(a.difficulty) }, (a.difficulty || '').toLowerCase()),
+            ),
+            h('div', { class: 'ach-wall-name' }, a.name || 'Achievement'),
+            h('div', { class: 'ach-wall-desc' }, a.description || ''),
+          ));
+        });
+        body.appendChild(grid);
+      })
+      .catch((e) => {
+        body.innerHTML = '';
+        body.appendChild(emptyState('Wall unavailable', e.message || 'Could not load this trader achievements', 'award'));
+      });
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Hopium composer - propose questions with the real rules
+  // ════════════════════════════════════════════════════════════════════
+
+  function hopiumComposer(onDone) {
+    const wrap = h('div', { class: 'modal-back' },
+      h('div', { class: 'modal' },
+        h('div', { class: 'modal-head' },
+          h('span', { class: 'modal-title' }, 'Propose a question'),
+          h('button', { class: 'traffic-mini', onclick: () => wrap.remove() }, icon('x', 13)),
+        ),
+        h('div', { class: 'modal-body' },
+          h('textarea', { class: 'composer-ta', placeholder: 'Will MOONCAT hit $0.01 before Friday?', maxlength: '200' }),
+          h('div', { class: 'card-hint' }, 'Real rules: $100k+ balance to post, max 2 per hour, 10-200 characters, auto-resolution with web search when needed.'),
+          h('div', { class: 'route-actions' },
+            h('button', { class: 'btn btn-primary', onclick: submit }, 'Submit'),
+            h('button', { class: 'btn btn-ghost', onclick: () => wrap.remove() }, 'Cancel'),
+          ),
+        ),
+      ),
+    );
+    wrap.addEventListener('click', (ev) => { if (ev.target === wrap) wrap.remove(); });
+    $('.candle-window', shadow).appendChild(wrap);
+    const body = $('.modal-body', wrap);
+    const err = h('div', { class: 'composer-err' });
+    body.appendChild(err);
+    const ta = $('.composer-ta', wrap);
+    ta.focus();
+
+    async function submit() {
+      const q = (ta.value || '').trim();
+      if (q.length < 10 || q.length > 200) {
+        err.textContent = 'Question must be between 10 and 200 characters';
+        return;
+      }
+      err.textContent = '';
+      try {
+        const d = await apiPost('/api/hopium/questions/create', { question: q });
+        toast('success', 'Question posted', d && d.question && d.question.requiresWebSearch ? 'auto-resolves with web search' : 'It is live on Hopium');
+        wrap.remove();
+        if (onDone) onDone();
+      } catch (e) {
+        err.textContent = e.message || 'Could not post';
+      }
+    }
   }
 
   // mod-gated chrome - rebuilt live so enabling a mod shows its chrome immediately
@@ -6416,9 +6934,11 @@
     const main = h('main', { class: 'candle-main' }, head, contentEl);
 
     statusClock = h('span', { class: 'mono' }, '--:--');
+    statusDot = h('span', { class: 'ws-dot off' }, icon('zap', 10), ' ', h('span', { class: 'ws-txt' }, 'offline'));
     statusBar = h('div', { class: 'candle-status' },
       h('span', { class: 'mono' }, 'candle · v' + VERSION),
       h('span', { class: 'mono' }, icon('clock', 10), ' ', statusClock),
+      statusDot,
     );
     windowEl = h('div', { class: 'candle-window closed' }, titlebar, h('div', { class: 'candle-body' }, sidebar, main), statusBar);
     shadow.appendChild(windowEl);
@@ -6567,11 +7087,40 @@
 
   function boot() {
     buildShell();
+    if (statusDot) statusDot.style.display = isMod('realtime') ? '' : 'none';
     applyClientClasses();
     bus.on('mods', applyClientClasses);
     bus.on('mods', renderChrome);
     bus.on('settings', applyClientLook);
     bus.on('mods', syncOnsite);
+    bus.on('mods', (id) => {
+      if (id !== 'realtime') return;
+      if (statusDot) statusDot.style.display = isMod('realtime') ? '' : 'none';
+      if (isMod('realtime')) wsStart(); else wsStop();
+    });
+    bus.on('ws', (v) => {
+      if (!statusDot) return;
+      statusDot.classList.toggle('on', !!v);
+      statusDot.classList.toggle('off', !v);
+      const t = statusDot.querySelector('.ws-txt');
+      if (t) t.textContent = v ? 'live' : 'offline';
+    });
+    // large trade alerts straight off the socket (realtime + largetrade mods)
+    let lastLargeToast = 0;
+    const largePick = (m) => {
+      if (!isMod('largetrade') || !isMod('toasts')) return;
+      const t = m && m.data;
+      if (!t) return;
+      const v = num(t.totalValue ?? t.totalBaseCurrencyAmount ?? t.amount, 0);
+      if (v < 100000) return;
+      const now = Date.now();
+      if (now - lastLargeToast < 5000) return;
+      lastLargeToast = now;
+      toast('info', 'Large ' + (t.type || '').toUpperCase(), (t.coinSymbol || t.symbol || '?') + ' - ' + fmtBuss(v) + ' by @' + (t.username || '?'));
+    };
+    bus.on('ws:live-trade', largePick);
+    bus.on('ws:all-trades', largePick);
+    if (isMod('realtime')) wsStart();
     document.addEventListener('keydown', onKeydown, true);
     const offSpa = startSpaSync();
     startAlerts();
@@ -6603,6 +7152,7 @@
       destroy() {
         document.removeEventListener('keydown', onKeydown, true);
         offSpa();
+        wsStop();
         if (alertTimer) clearInterval(alertTimer);
         clearCleanups();
         hudRemove();

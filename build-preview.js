@@ -81,7 +81,23 @@ const mock = `
       { username: 'slate', netWorth: 17500, rugCount: 3, cashBalance: 4200, coinValue: 13300 },
     ] });
     if (p === '/api/shop/inventory') return json({ gems: 12500, founderBadge: true, nameColors: ['crimson'] });
-    if (p === '/api/user/arcade-stats') return json({ gamesPlayed: 84, winnings: 12500, losses: 9600, totalBets: 22100, bestWin: 2400, slots: { spins: 40, wins: 12 }, mines: { games: 22, wins: 8 }, coinflip: { games: 16, wins: 9 }, dice: { games: 6, wins: 1 } });
+    if (p === '/api/user/arcade-stats') return json({ wins: 31, losses: 53, totalPlayed: 84 });
+    if (p.startsWith('/api/user/') && p.endsWith('/achievements')) {
+      const u = p.split('/')[3];
+      const UNLOCKED = { slate: ['first-trade', 'hodler'], apex: ['first-trade'], whale69: ['first-trade', 'hodler', 'whale'], paper: [] };
+      const cat = [
+        { id: 'first-trade', name: 'First Blood', description: 'Make your first trade', difficulty: 'EASY' },
+        { id: 'hodler', name: 'Paper Hands Reject', description: 'Hold a coin for 24 hours', difficulty: 'MEDIUM' },
+        { id: 'whale', name: 'Whale Watch', description: 'Buy 1M BUSS of a single coin', difficulty: 'HARD' },
+      ];
+      const mine = UNLOCKED[u] || [];
+      return json({ achievements: cat.map((a) => ({ ...a, unlocked: mine.includes(a.id), unlockedAt: mine.includes(a.id) ? NOW / 1000 : null })) });
+    }
+    if (p === '/api/hopium/questions/create' && opts && opts.method === 'POST') {
+      const q = (JSON.parse(opts.body || '{}').question || '').trim();
+      if (q.length < 10) return json({ error: 'Question must be between 10 and 200 characters' }, 400);
+      return json({ success: true, question: { id: 99, question: q, resolutionDate: (NOW + 86400e3) / 1000, requiresWebSearch: /price|hit|reach/.test(q) } });
+    }
     if (p === '/api/rewards/claim') return json({ canClaim: true, streakDay: 7, streak: 7, todayAmount: 2200, windowClosesAt: (NOW + 3600e3) / 1000, nextDayAmount: 2600 });
     if (p === '/api/prestige') return json({ level: 1, netWorth: 17500.5, cash: 4200.5, nextCost: 100000, multiplier: 1.0 });
     if (p === '/api/keys') return json({ key: 'rgpl_abc123', remainingRequests: 842, limit: 1000, createdAt: (NOW - 86400e3 * 3) / 1000 });
@@ -121,6 +137,30 @@ const mock = `
       return json({ coin: coin || { symbol: sym, name: sym, currentPrice: 0.001, marketCap: 10000, volume24h: 500, change24h: 5, poolCoinAmount: 1000000, poolBaseCurrencyAmount: 1000, circulatingSupply: 1000000000, initialSupply: 1000000000, createdAt: NOW / 1000 - 3600, tradingUnlocksAt: NOW / 1000 + 600, isLocked: true, creatorUsername: 'slate', icon: null } });
     }
     return json({});
+  };
+
+  // fake WebSocket: the preview stands in for RugPlay's public socket (ws.rugplay.com)
+  window.WebSocket = class {
+    constructor(url) {
+      this.readyState = 0;
+      this.url = url;
+      setTimeout(() => { this.readyState = 1; if (this.onopen) this.onopen(); }, 40);
+      this._t = setInterval(() => this._push(), 2400);
+    }
+    send() {}
+    close() { clearInterval(this._t); this.readyState = 3; if (this.onclose) this.onclose(); }
+    _push() {
+      if (!this.onmessage) return;
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+      const roll = Math.random();
+      if (roll < 0.4) {
+        this.onmessage({ data: JSON.stringify({ type: 'arcade_activity', arcadeActivity: { username: pick(['slate', 'whale69', 'apex', 'paper', 'ruglord']), game: pick(['coinflip', 'dice', 'mines', 'slots', 'tower']), amount: Math.round(80 + Math.random() * 4200), won: Math.random() > 0.5, timestamp: Date.now() } }) });
+      } else if (roll < 0.8) {
+        this.onmessage({ data: JSON.stringify({ type: 'live-trade', data: { type: pick(['BUY', 'SELL']), username: pick(['slate', 'whale69', 'apex', 'paper', 'ruglord']), coinSymbol: pick(['MOONCAT', 'TEST', 'STONK', 'ALPH4']), totalValue: Math.round(50000 + Math.random() * 160000), timestamp: Date.now() } }) });
+      } else {
+        this.onmessage({ data: JSON.stringify({ type: 'price_update', coinSymbol: 'MOONCAT', currentPrice: 0.0012 + Math.random() * 0.0003, change24h: 470 + Math.random() * 30, marketCap: 1200000 + Math.random() * 50000, volume24h: 99000 + Math.random() * 5000 }) });
+      }
+    }
   };
 `;
 
@@ -181,7 +221,9 @@ ${body}
       ['glowfx', 'animation', 'shadowfx', 'statusbar', 'keyhints', 'versiontag', 'credits', 'viewmemory',
        'bell', 'pricealerts', 'profilepeek', 'holderradar', 'comments', 'treemap', 'marketstats', 'movers',
        'seasoncard', 'gemswallet', 'networth', 'livefeed', 'siteprice', 'sitechange', 'sitemcap', 'sitevol',
-       'sitefeed', 'sitehopium', 'siteleader', 'siteach', 'siterewards', 'sitekeys', 'sitearcade', 'sitetransfers']
+       'sitefeed', 'sitehopium', 'siteleader', 'siteach', 'siterewards', 'sitekeys', 'sitearcade', 'sitetransfers',
+       'realtime', 'routers', 'arcadelive', 'arcadestats', 'hopiumcreate', 'achwalls', 'siteliveprice', 'sitelivearcade', 'sitelargetrades',
+       'toasts', 'largetrade']
         .forEach((m) => C.setMod(m, true));
       C.open();
       const qs = new URLSearchParams(location.search);
