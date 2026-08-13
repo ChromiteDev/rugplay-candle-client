@@ -184,8 +184,33 @@ ${body}
        'sitefeed', 'sitehopium', 'siteleader', 'siteach', 'siterewards', 'sitekeys', 'sitearcade', 'sitetransfers']
         .forEach((m) => C.setMod(m, true));
       C.open();
-      const v = new URLSearchParams(location.search).get('view') || 'overview';
+      const qs = new URLSearchParams(location.search);
+      const v = qs.get('view') || 'overview';
       if (C.setView) C.setView(v);
+      // screenshot hook: ?shot=transfer drives the coin-transfer modal open
+      if (qs.get('shot') === 'transfer') {
+        setTimeout(() => {
+          try {
+            localStorage.setItem('candle:friends', JSON.stringify([{ username: 'apex', tag: 'Friend', addedAt: Date.now() }]));
+          } catch (e) { /* ignore */ }
+          C.setView('social');
+          setTimeout(() => {
+            const root = document.getElementById('candle-host') && document.getElementById('candle-host').shadowRoot;
+            const send = root && root.querySelector('.rank-actions .btn[title="Send BUSS"]');
+            if (send) send.click();
+            setTimeout(() => {
+              const chips = root && root.querySelectorAll('.chip');
+              let coinChip = null;
+              if (chips) chips.forEach((c) => { if (c.textContent.includes('Coin')) coinChip = c; });
+              if (coinChip) coinChip.click();
+              setTimeout(() => {
+                const coinIn = root && root.querySelector('.modal input[placeholder*="Coin symbol"]');
+                if (coinIn) { coinIn.value = 'MOONCAT'; coinIn.dispatchEvent(new Event('input', { bubbles: true })); }
+              }, 120);
+            }, 120);
+          }, 350);
+        }, 300);
+      }
     }, 150);
   });
 </script>

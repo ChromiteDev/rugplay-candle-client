@@ -4,7 +4,7 @@
 
 Candle Client is a Tampermonkey userscript that turns rugplay.com into a proper trading terminal. It floats a full client over the site with market data, trade analytics, a social layer, and 205 mods in 13 categories. Every mod runs on RugPlay's real API and its real platform rules. Nothing in here is mocked, simulated, or fabricated.
 
-Built by Chromites. Version 1.1.0. Free to use.
+Built by Chromites. Version 1.1.1. Free to use.
 
 <p align="center">
   <a href="https://github.com/ChromiteDev/rugplay-candle-client/releases"><img src="https://img.shields.io/github/v/release/ChromiteDev/rugplay-candle-client?label=version&color=e11d48" alt="Version"></a>
@@ -17,6 +17,14 @@ Built by Chromites. Version 1.1.0. Free to use.
 ![Candle Client overview](screens/menu-overview.png)
 
 ## Screenshots
+
+The Social view: ranks, mentions, and messages on real endpoints.
+
+![The Social view with friend ranks](screens/menu-social.png)
+
+Hidden coin transfers: the site UI only exposes cash, the real endpoint takes coins too.
+
+![Coin transfer modal with live price](screens/menu-transfer.png)
 
 ![Market view with treemap and analytics](screens/menu-market.png)
 
@@ -35,6 +43,8 @@ The client opens instantly. All 205 mods start disabled. Turn on the ones you wa
 The menu has fifteen views: Overview, Market, Watchlist, Live Feed, Leaders, Hopium, Gamble Lab, Portfolio, Achievements, Rewards, Prestige, Shop, Account, Social, and Mods. It presents like a desktop application, not a userscript. There is a sidebar, a live status bar, notifications, five accent colors, and auto, dark, or light themes.
 
 The Social view adds the platform's real social layer: tag traders as Friend, Whale, Watch, or Rival, read your mention inbox, and message anyone by posting a comment with an @mention. Coin comments are RugPlay's chat, and mentions generate real server notifications.
+
+Transfers go both ways. Cash carries the usual 1% fee; coins move with none. The site never exposes coin transfers, but the endpoint accepts them, so the client sends tokens with live price estimation and a $10 minimum value check, straight from the real rules.
 
 ## The mods
 
