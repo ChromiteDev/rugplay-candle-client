@@ -97,6 +97,13 @@ const mock = `
       return json({ user: null });
     }
     if (p === '/api/user/arcade-stats' || p === '/api/user/settings') return json({});
+    if (p === '/api/transfer' && opts && opts.method === 'POST') {
+      const body = JSON.parse(opts.body || '{}');
+      if (body.type === 'COIN') {
+        return json({ success: true, type: 'COIN', amount: body.amount, coinSymbol: (body.coinSymbol || '').toUpperCase(), coinName: 'Moon Cat', recipient: body.recipientUsername, newQuantity: 2099999 });
+      }
+      return json({ success: true, type: 'CASH', amount: body.amount, feePaid: body.amount * 0.01, feeRate: 0.01, amountReceived: body.amount * 0.99, recipient: body.recipientUsername, newBalance: 4200.5 - body.amount });
+    }
     if (p.startsWith('/api/coin/')) {
       const sym = p.split('/')[3];
       if (p.endsWith('/holders')) return json({ holders: [

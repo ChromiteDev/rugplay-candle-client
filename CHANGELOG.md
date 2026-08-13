@@ -2,9 +2,18 @@
 
 All notable changes to Candle Client are listed here. The format is plain on purpose.
 
+## v1.1.1 - 2026-08-12
+
+Hidden coin transfers.
+
+- The transfer modal now sends coins, not just cash. The site UI only exposes cash transfers; the endpoint accepts `type: 'COIN'` with a coin symbol. Coin transfers carry no fee, require ~$10+ in value, and are blocked if the recipient is in an active season.
+- Live price estimation: type a symbol, get the current price and the dollar value of your bag before you send.
+- Available from the Social view, profile modals, and a Send coins button in the portfolio transfer card.
+
 ## v1.1.0 - 2026-08-12
 
 The Social Update.
+
 
 **New: Social view**
 - Friends and ranks: tag traders as Friend, Whale, Watch, or Rival. Labels live in your client only, nothing is forged server-side.

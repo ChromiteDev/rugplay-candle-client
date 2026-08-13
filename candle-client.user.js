@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Candle Client for RugPlay
 // @namespace    candle.rugplay
-// @version      1.1.0
+// @version      1.1.1
 // @description  Candle Client for RugPlay by Chromites. Right Shift opens the client. 205 mods in 13 categories, all off until enabled. On-site mods render directly on rugplay.com, the rest live inside the client. Every mod runs on real RugPlay API endpoints and real platform rules. Nothing is faked.
 // @author       Chromites
 // @match        https://rugplay.com/*
@@ -14,7 +14,7 @@
 // ==/UserScript==
 
 /*
- * Candle Client v1.1.0, by Chromites.
+ * Candle Client v1.1.1, by Chromites.
  *
  * Right Shift toggles the client. 205 mods in 13 categories, all OFF by default.
  * Flip a mod on and it takes effect. The Site category renders directly on the
@@ -46,7 +46,7 @@
   // Constants
   // ════════════════════════════════════════════════════════════════════
 
-  const VERSION = '1.1.0';
+  const VERSION = '1.1.1';
   const DEVELOPER = 'Chromites';
   const SWAP_FEE = 0.003;
 
@@ -2775,6 +2775,7 @@
     const holdings = h('div', { class: 'card' });
     const txCard = h('div', { class: 'card' });
     const transferCard = h('div', { class: 'card' });
+    let firstHoldSym = '';
     root.appendChild(totals);
     root.appendChild(h('div', { class: 'grid-2' }, holdings, h('div', { class: 'right-col' }, transferCard, txCard)));
 
@@ -2851,6 +2852,7 @@
             body.appendChild(emptyState('No positions', 'Buy your first coin from the market', 'wallet'));
             return;
           }
+          if (list[0] && list[0].symbol) firstHoldSym = list[0].symbol;
           const totalVal = list.reduce((s, c) => s + num(c.value), 0);
           const topQty = list.reduce((s, c) => s + num(c.quantity), 0);
           let biggest = list[0], topVal = list[0];
@@ -2973,7 +2975,11 @@
       transferCard.appendChild(userIn);
       transferCard.appendChild(amtIn);
       transferCard.appendChild(goBtn);
-      transferCard.appendChild(h('div', { class: 'card-hint' }, 'Cash transfers require at least $10 and land instantly.'));
+      const coinBtn = h('button', { class: 'btn btn-ghost', onclick: () => {
+        transferModal('', firstHoldSym);
+      } }, icon('send', 13), ' Send coins…');
+      transferCard.appendChild(coinBtn);
+      transferCard.appendChild(h('div', { class: 'card-hint' }, 'Cash min $10 · 1% fee. Coins: no fee, ~$10+ value, hidden route the site UI hides.'));
     }
 
     return root;
@@ -5780,44 +5786,107 @@
   // Social — friends & ranks, mentions, messages
   // ════════════════════════════════════════════════════════════════════
 
-  function transferModal(username) {
+  function transferModal(username, presym) {
     const wrap = h('div', { class: 'modal-back' },
       h('div', { class: 'modal' },
         h('div', { class: 'modal-head' },
-          h('span', { class: 'modal-title' }, 'Send BUSS'),
+          h('span', { class: 'modal-title' }, 'Send'),
           h('button', { class: 'traffic-mini', onclick: () => wrap.remove() }, icon('x', 13)),
         ),
-        h('div', { class: 'modal-body' },
-          h('div', { class: 'field' },
-            h('label', { class: 'field-label' }, 'Recipient'),
-            h('input', { class: 'input', value: username || '', readonly: !!username, placeholder: 'username' }),
-          ),
-          h('div', { class: 'field' },
-            h('label', { class: 'field-label' }, 'Amount · min $10'),
-            h('input', { class: 'input', type: 'number', min: '10', step: 'any', placeholder: '0.00' }),
-          ),
-          h('div', { class: 'card-hint' }, '1% transfer fee · lands instantly · the real /api/transfer endpoint.'),
-          h('button', { class: 'btn btn-primary full', onclick: async (ev) => {
-            const to = username || $('input', wrap).value.trim();
-            const amt = num(parseFloat(wrap.querySelectorAll('input')[1].value), 0);
-            if (!to || amt < 10) { toast('error', 'Invalid transfer', 'Username required, min $10 cash'); return; }
-            const btn = ev.currentTarget;
-            btn.disabled = true;
-            try {
-              await apiPost('/api/transfer', { recipientUsername: to, type: 'CASH', amount: amt, coinSymbol: null });
-              toast('success', 'Transfer sent', `$${amt.toFixed(2)} to @${to}`, 3400);
-              wrap.remove();
-              bus.emit('portfolio');
-            } catch (e) {
-              toast('error', 'Transfer failed', e.message);
-              btn.disabled = false;
-            }
-          } }, icon('send', 13), ' Send'),
-        ),
+        h('div', { class: 'modal-body' }),
       ),
     );
     wrap.addEventListener('click', (ev) => { if (ev.target === wrap) wrap.remove(); });
     $('.candle-window', shadow).appendChild(wrap);
+
+    let type = 'CASH';
+    let price = 0;
+    const body = $('.modal-body', wrap);
+
+    const typeRow = h('div', { class: 'chip-row' },
+      ['CASH', 'COIN'].map((t) => h('button', {
+        class: `chip ${t === type ? 'on' : ''}`,
+        onclick: (ev) => {
+          type = t;
+          typeRow.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === ev.currentTarget));
+          render();
+        },
+      }, t === 'CASH' ? 'Cash · BUSS' : 'Coin · tokens')),
+    );
+
+    const toIn = h('input', { class: 'input', value: username || '', readonly: !!username, placeholder: 'username' });
+    const amtIn = h('input', { class: 'input', type: 'number', min: '0', step: 'any', placeholder: '0' });
+    const symWrap = h('div', { class: 'field' });
+    const symIn = h('input', { class: 'input', value: presym || '', placeholder: 'Coin symbol (e.g. MOONCAT)' });
+    const priceLine = h('div', { class: 'card-hint' });
+    const goBtn = h('button', { class: 'btn btn-primary full', onclick: async (ev) => {
+      const to = (toIn.value || '').trim();
+      const amt = num(parseFloat(amtIn.value), 0);
+      const btn = ev.currentTarget;
+      if (type === 'CASH') {
+        if (!to || amt < 10) { toast('error', 'Invalid transfer', 'Username required, min $10 cash'); return; }
+        btn.disabled = true;
+        try {
+          await apiPost('/api/transfer', { recipientUsername: to, type: 'CASH', amount: amt, coinSymbol: null });
+          toast('success', 'Transfer sent', `$${amt.toFixed(2)} to @${to}`, 3400);
+          wrap.remove();
+          bus.emit('portfolio');
+        } catch (e) { toast('error', 'Transfer failed', e.message); btn.disabled = false; }
+        return;
+      }
+      // COIN — amount is in tokens, min estimated value $10, no fee
+      const sym = (symIn.value || '').trim().toUpperCase();
+      if (!to || !sym || amt <= 0) { toast('error', 'Invalid transfer', 'Username, coin and amount required'); return; }
+      if (price > 0 && amt * price < 10) { toast('error', 'Too small', `That bag is worth ~$${(amt * price).toFixed(2)} — needs $10 minimum`); return; }
+      btn.disabled = true;
+      try {
+        const res = await apiPost('/api/transfer', { recipientUsername: to, type: 'COIN', amount: amt, coinSymbol: sym });
+        toast('success', 'Coins sent', `${amt.toLocaleString()} ${sym} to @${to}`, 3400);
+        wrap.remove();
+        bus.emit('portfolio');
+      } catch (e) { toast('error', 'Transfer failed', e.message); btn.disabled = false; }
+    } }, icon('send', 13), ' Send');
+
+    symIn.addEventListener('input', () => {
+      const sym = (symIn.value || '').trim().toUpperCase();
+      if (!sym) { price = 0; priceLine.textContent = 'Enter a coin to see its price'; return; }
+      apiGet(`/api/coin/${sym}`, { ttl: 6000 })
+        .then((d) => {
+          const c = d && d.coin;
+          if (!c) { price = 0; priceLine.textContent = `${sym} not found`; return; }
+          price = num(c.currentPrice);
+          const amt = num(parseFloat(amtIn.value), 0);
+          priceLine.textContent = `${sym} = ${fmtPrice(price)} · ${amt > 0 ? 'bag worth ~' + fmtBuss(amt * price) + ' · ' : ''}min bag $10 worth`;
+        })
+        .catch(() => { price = 0; priceLine.textContent = 'Could not fetch price'; });
+    });
+    amtIn.addEventListener('input', () => {
+      if (type !== 'COIN' || !price) return;
+      const amt = num(parseFloat(amtIn.value), 0);
+      priceLine.textContent = `${symIn.value.trim().toUpperCase() || 'COIN'} = ${fmtPrice(price)} · ${amt > 0 ? 'bag worth ~' + fmtBuss(amt * price) + ' · ' : ''}min bag $10 worth`;
+    });
+
+    function render() {
+      body.innerHTML = '';
+      body.appendChild(typeRow);
+      body.appendChild(h('div', { class: 'field' }, h('label', { class: 'field-label' }, 'Recipient'), toIn));
+      if (type === 'COIN') {
+        symWrap.innerHTML = '';
+        symWrap.appendChild(h('label', { class: 'field-label' }, 'Coin'));
+        symWrap.appendChild(symIn);
+        body.appendChild(symWrap);
+        body.appendChild(h('div', { class: 'field' }, h('label', { class: 'field-label' }, 'Amount · tokens'), amtIn));
+        body.appendChild(priceLine);
+        body.appendChild(h('div', { class: 'card-hint' }, 'Hidden route: the site UI only exposes cash. Coin transfers carry no fee, need ~$10+ in value, and are blocked if the recipient is in an active season.'));
+      } else {
+        amtIn.placeholder = '0.00';
+        body.appendChild(h('div', { class: 'field' }, h('label', { class: 'field-label' }, 'Amount · min $10'), amtIn));
+        body.appendChild(h('div', { class: 'card-hint' }, '1% transfer fee · lands instantly · the real /api/transfer endpoint.'));
+      }
+      body.appendChild(goBtn);
+      if (type === 'COIN') symIn.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    render();
   }
 
   // @mention autocomplete — suggests real usernames, inserts the token
