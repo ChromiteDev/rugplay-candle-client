@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 1280px; height: 640px; overflow: hidden;
+    background:
+      radial-gradient(900px 480px at 50% 28%, rgba(239,68,68,.20), transparent 60%),
+      radial-gradient(700px 380px at 90% 92%, rgba(239,68,68,.11), transparent 55%),
+      radial-gradient(600px 320px at 8% 90%, rgba(239,68,68,.07), transparent 50%),
+      linear-gradient(180deg, #15151a, #0f0f13 62%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, Arial, sans-serif;
+    color: #f4f4f5; position: relative;
+  }
+  .bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, transparent, #ef4444 28%, #f87171 50%, #ef4444 72%, transparent);
+  }
+  .logo { filter: drop-shadow(0 0 30px rgba(239,68,68,.55)); margin-bottom: 24px; }
+  h1 {
+    margin: 0; font-size: 76px; font-weight: 800; letter-spacing: -2.5px;
+    background: linear-gradient(180deg, #ffffff 18%, #f87171 95%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .tag { margin-top: 16px; font-size: 27px; font-weight: 500; color: #a1a1aa; letter-spacing: .1px; }
+  .sub {
+    margin-top: 38px; font-size: 17px; color: #71717a; letter-spacing: .16em; font-weight: 600;
+    text-transform: uppercase;
+  }
+  .sub b { color: #f87171; font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="bar"></div>
+  <svg class="logo" width="118" height="146" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M12 2C12 2 5 8.6 5 14a7 7 0 0 0 14 0c0-5.4-7-12-7-12z" fill="rgba(239,68,68,.88)" stroke="#f87171"/>
+    <path d="M12 8c0 0-3 3.4-3 6a3 3 0 0 0 6 0c0-2.6-3-6-3-6z" fill="#fecaca" stroke="none"/>
+  </svg>
+  <h1>Candle Client</h1>
+  <div class="tag">A trading terminal for RugPlay</div>
+  <div class="sub"><b>200 real mods</b> &nbsp;&nbsp;·&nbsp;&nbsp; Press Right Shift &nbsp;&nbsp;·&nbsp;&nbsp; Free &nbsp;&nbsp;·&nbsp;&nbsp; v1.0.0 by Chromites</div>
+</body>
+</html>

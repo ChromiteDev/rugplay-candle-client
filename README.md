@@ -6,6 +6,14 @@ Candle Client is a Tampermonkey userscript that turns rugplay.com into a proper 
 
 Built by Chromites. Version 1.0.0. Free to use.
 
+<p align="center">
+  <a href="https://github.com/ChromiteDev/rugplay-candle-client/releases"><img src="https://img.shields.io/github/v/release/ChromiteDev/rugplay-candle-client?label=version&color=e11d48" alt="Version"></a>
+  <img src="https://img.shields.io/badge/license-closed%20source-e11d48" alt="Closed source">
+  <img src="https://img.shields.io/badge/runtime-Tampermonkey-e11d48" alt="Tampermonkey">
+  <img src="https://img.shields.io/badge/platform-rugplay.com-e11d48" alt="Platform">
+  <a href="https://github.com/ChromiteDev/rugplay-candle-client/stargazers"><img src="https://img.shields.io/github/stars/ChromiteDev/rugplay-candle-client?color=e11d48" alt="Stars"></a>
+</p>
+
 ![Candle Client overview](screens/menu-overview.png)
 
 ## Screenshots
@@ -54,7 +62,9 @@ Creator lock, the 0.3% swap fee, the 1% transfer fee, house edges for every arca
 
 - `candle-client.user.js` the entire client in one file, no dependencies
 - `build-preview.js` dev tooling that generates a standalone preview page with mock data
-- `screens/` the screenshots used in this readme
+- `screens/` the screenshots used in this readme, plus the social preview card
+- `CHANGELOG.md` release history
+- `CONTRIBUTING.md` how to report bugs and ideas (closed source)
 
 ## Spread the word
 
@@ -66,6 +76,8 @@ If the client is working for you, help it reach the people who need it.
 - **Friends.** The fastest growth is still one player telling another.
 
 A clip of the Right Shift menu opening, one trade executed, and the mods view is the whole pitch in under 20 seconds.
+
+The repo includes a ready-made 1280x640 social card at `screens/social-preview.png`. To make link shares show it, upload the file in **Settings, General, Social preview** (one click, under 1 MB).
 
 ## License
 
