@@ -22,7 +22,7 @@ The Social view: ranks, mentions, and messages on real endpoints.
 
 ![The Social view with friend ranks](screens/menu-social.png)
 
-Hidden coin transfers: the site UI only exposes cash, the real endpoint takes coins too.
+Coin transfers: the site UI only exposes cash, but the endpoint takes coins too.
 
 ![Coin transfer modal with live price](screens/menu-transfer.png)
 

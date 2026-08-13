@@ -4,7 +4,7 @@ All notable changes to Candle Client are listed here. The format is plain on pur
 
 ## v1.1.1 - 2026-08-12
 
-Hidden coin transfers.
+Coin-to-coin transfers.
 
 - The transfer modal now sends coins, not just cash. The site UI only exposes cash transfers; the endpoint accepts `type: 'COIN'` with a coin symbol. Coin transfers carry no fee, require ~$10+ in value, and are blocked if the recipient is in an active season.
 - Live price estimation: type a symbol, get the current price and the dollar value of your bag before you send.

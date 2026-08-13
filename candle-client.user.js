@@ -123,10 +123,10 @@
     { id: '1d', label: '1d', hours: 2160 },
   ];
 
-  // ── Mod registry — 205 mods across 13 categories, every one real ───
+  // ── Mod registry - 205 mods across 13 categories, every one real ───
 
   const MODS = [
-    // Site (35) — mods that render directly on rugplay.com
+    // Site (35) - mods that render directly on rugplay.com
     { id: 'locktimer', name: 'Creator Lock', cat: 'Site', icon: 'lock', def: false, desc: 'Onsite countdown for the 60s dev-only trading window.' },
     { id: 'coinage', name: 'Coin Age', cat: 'Site', icon: 'calendar', def: false, desc: 'Onsite chip showing when the coin launched.' },
     { id: 'athmarker', name: 'All-Time High', cat: 'Site', icon: 'flame', def: false, desc: 'Onsite ATH chip computed from chart history.' },
@@ -165,7 +165,7 @@
     { id: 'mentionradar', name: 'Mention Radar', cat: 'Site', icon: 'at', def: false, desc: 'Onsite unread @mention counter from your real notifications.' },
     { id: 'friendtags', name: 'Friend Tags', cat: 'Site', icon: 'tag', def: false, desc: 'Onsite friend rank tags next to usernames in comments.' },
     { id: 'quicktransfer', name: 'Quick Transfer', cat: 'Site', icon: 'send', def: false, desc: 'Onsite Send button on profile pages.' },
-    // Trading (24) — coin terminal
+    // Trading (24) - coin terminal
     { id: 'quicktrade', name: 'Quick Trade', cat: 'Trading', icon: 'zap', def: false, desc: 'BUY/SELL terminal with live pool math on every coin.' },
     { id: 'slippage', name: 'Slippage Meter', cat: 'Trading', icon: 'gauge', def: false, desc: 'Live AMM price-impact badge computed from the pool.' },
     { id: 'feeinfo', name: 'Fee Breakdown', cat: 'Trading', icon: 'tag', def: false, desc: 'Exact 0.3% swap fee shown per trade.' },
@@ -187,7 +187,7 @@
     { id: 'pooldepthbar', name: 'Depth Ratio', cat: 'Trading', icon: 'bars', def: false, desc: 'Pool depth against market cap as a ratio bar.' },
     { id: 'devwatch', name: 'Dev Watch', cat: 'Trading', icon: 'eye', def: false, desc: 'Flags the creator\'s buys and sells in the feed.' },
     { id: 'wallettrack', name: 'Wallet Track', cat: 'Trading', icon: 'wallet', def: false, desc: 'Your cash balance shown in the trade panel.' },
-    { id: 'permillion', name: 'Per Million', cat: 'Trading', icon: 'grid', def: false, desc: 'Price per 1M tokens — a cleaner mental scale.' },
+    { id: 'permillion', name: 'Per Million', cat: 'Trading', icon: 'grid', def: false, desc: 'Price per 1M tokens - a cleaner mental scale.' },
     { id: 'volatility', name: 'Volatility', cat: 'Trading', icon: 'activity', def: false, desc: '24h high-low range from the 1d candles.' },
     { id: 'fromlaunch', name: 'From Launch', cat: 'Trading', icon: 'flame', def: false, desc: 'How many x above the $0.000001 launch price.' },
     // Market (22)
@@ -242,7 +242,7 @@
     { id: 'coinflipmath', name: 'Streak Math', cat: 'Gamble', icon: 'coin', def: false, desc: 'Odds of n coinflip wins in a row.' },
     { id: 'slotscombo', name: 'Slots Combos', cat: 'Gamble', icon: 'sparkle', def: false, desc: 'The 6 symbols and their ×5 / ×2 payouts.' },
     { id: 'betlimits', name: 'Bet Limits', cat: 'Gamble', icon: 'shield', def: false, desc: 'Tower max bets per difficulty: $1M / $100K / $10K.' },
-    { id: 'minesrules', name: 'Mines Rules', cat: 'Gamble', icon: 'info', def: false, desc: 'The real rules card: 3–24 mines on 25 tiles.' },
+    { id: 'minesrules', name: 'Mines Rules', cat: 'Gamble', icon: 'info', def: false, desc: 'The real rules card: 3-24 mines on 25 tiles.' },
     { id: 'edgegauge', name: 'Edge Gauge', cat: 'Gamble', icon: 'gauge', def: false, desc: 'House edge of every game at a glance.' },
     { id: 'fairness', name: 'Fairness Rank', cat: 'Gamble', icon: 'trophy', def: false, desc: 'All games ranked by how fair they are.' },
     // Portfolio (16)
@@ -378,7 +378,7 @@
   }
 
   function fmtPrice(n) {
-    if (!isFinite(n)) return '—';
+    if (!isFinite(n)) return '-';
     const abs = Math.abs(n);
     if (abs >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
     if (abs >= 1) return n.toLocaleString('en-US', { maximumFractionDigits: 4 });
@@ -387,7 +387,7 @@
   }
 
   function fmtPct(n) {
-    if (!isFinite(n)) return '—';
+    if (!isFinite(n)) return '-';
     const s = n >= 9999999 ? '9,999,999' : (Math.abs(n) >= 100 ? n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : n.toFixed(2));
     return `${n >= 0 ? '+' : ''}${s}%`;
   }
@@ -561,7 +561,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // State — settings, mods, watchlist, alerts
+  // State - settings, mods, watchlist, alerts
   // ════════════════════════════════════════════════════════════════════
 
   const bus = createBus();
@@ -601,7 +601,7 @@
   function isWatched(sym) {
     return getWatchlist().includes(sym);
   }
-  // friends & ranks — local labels, stored in the client, never forged server-side
+  // friends & ranks - local labels, stored in the client, never forged server-side
   const RANK_TAGS = ['Friend', 'Whale', 'Watch', 'Rival'];
   function getFriends() {
     return storage.get('candle:friends', []) || [];
@@ -805,7 +805,7 @@
     }, h('span', { class: 'sw-thumb' }));
   }
 
-  // two-step confirm button — a deliberate second click before any write
+  // two-step confirm button - a deliberate second click before any write
   function confirmBtn(label, onConfirm, opts = {}) {
     const btn = h('button', { class: opts.cls || 'btn btn-primary' }, label);
     let armed = false;
@@ -893,14 +893,14 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Arcade EV — exact rules from the server source
+  // Arcade EV - exact rules from the server source
   // ════════════════════════════════════════════════════════════════════
 
   const EV = {
     dice() {
       const p = 1 / 6;
       const mult = 3;
-      return { label: 'Dice · pick 1–6', chance: p, mult, ev: p * mult, edge: p * mult - 1 };
+      return { label: 'Dice · pick 1-6', chance: p, mult, ev: p * mult, edge: p * mult - 1 };
     },
     coinflip() {
       const p = 1 / 2;
@@ -938,7 +938,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Normalizers — every endpoint is read defensively
+  // Normalizers - every endpoint is read defensively
   // ════════════════════════════════════════════════════════════════════
 
   function num(v, d = 0) {
@@ -970,7 +970,7 @@
   }
 
   function fmtQty(n) {
-    if (!isFinite(n)) return '—';
+    if (!isFinite(n)) return '-';
     const abs = Math.abs(n);
     if (abs >= 1e9) return (n / 1e9).toFixed(2) + 'B';
     if (abs >= 1e6) return (n / 1e6).toFixed(2) + 'M';
@@ -979,12 +979,12 @@
   }
 
   function fmtBuss(n) {
-    if (!isFinite(n)) return '—';
+    if (!isFinite(n)) return '-';
     return '$' + (n >= 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 2 }) : n.toFixed(2));
   }
 
   function fmtShort(n) {
-    if (!isFinite(n)) return '—';
+    if (!isFinite(n)) return '-';
     const abs = Math.abs(n);
     if (abs >= 1e12) return (n / 1e12).toFixed(2) + 'T';
     if (abs >= 1e9) return (n / 1e9).toFixed(2) + 'B';
@@ -993,7 +993,7 @@
     return n.toFixed(2);
   }
 
-  // squarified treemap layout — same visual language as rugplay.com/treemap
+  // squarified treemap layout - same visual language as rugplay.com/treemap
   function treemapLayout(items, W, H) {
     const results = [];
     const vals = items.map((it) => ({ ...it, value: Math.max(it.value, 0) }));
@@ -1055,7 +1055,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // The emblem — Candle's brand mark
+  // The emblem - Candle's brand mark
   // ════════════════════════════════════════════════════════════════════
 
   const LOGO_MARKUP = `
@@ -1124,7 +1124,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Candle chart — server-aggregated candles + volume, crosshair tooltip
+  // Candle chart - server-aggregated candles + volume, crosshair tooltip
   // ════════════════════════════════════════════════════════════════════
 
   function candleChart(candles, volumes, height = 250) {
@@ -1292,8 +1292,8 @@
         }
         const rows = [
           ['Username', u.username],
-          ['Name', u.name || '—'],
-          ['Joined', u.joinedAt ? fmtDateTime(new Date(u.joinedAt).getTime() / 1000) : '—'],
+          ['Name', u.name || '-'],
+          ['Joined', u.joinedAt ? fmtDateTime(new Date(u.joinedAt).getTime() / 1000) : '-'],
         ];
         body.innerHTML = '';
         body.appendChild(h('div', { class: 'profile-row' }, avatar(u.username, 40), h('div', { class: 'profile-meta' },
@@ -1607,7 +1607,7 @@
       renderDevDom(c);
     }
 
-    // ── dev dominance (updates in place — never wipes the right column) ──
+    // ── dev dominance (updates in place - never wipes the right column) ──
     function renderDevDom(c) {
       if (!isMod('devdom')) return;
       const creator = c.creatorUsername || (c.creator && c.creator.username) || null;
@@ -1859,16 +1859,16 @@
           if (isMod('fromlaunch')) statsWrap.appendChild(statCell('From Launch', `${fmtShort(num(c.currentPrice) / 0.000001)}×`, 'from $0.000001'));
           if (isMod('volumedepth')) {
             const mc = num(c.marketCap);
-            statsWrap.appendChild(statCell('Vol ÷ MCap', mc > 0 ? (num(c.volume24h) / mc * 100).toFixed(1) + '%' : '—'));
+            statsWrap.appendChild(statCell('Vol ÷ MCap', mc > 0 ? (num(c.volume24h) / mc * 100).toFixed(1) + '%' : '-'));
           }
           if (isMod('poolsplit')) {
             const base = num(c.poolBaseCurrencyAmount);
             const tok = num(c.poolCoinAmount) * num(c.currentPrice);
             statsWrap.appendChild(statCell('Pool Split', fmtBuss(base) + ' / ' + fmtBuss(tok), 'BUSS / tokens'));
           }
-          if (isMod('athmarker')) { athCell = statCell('All-Time High', '—', 'from chart'); statsWrap.appendChild(athCell); }
+          if (isMod('athmarker')) { athCell = statCell('All-Time High', '-', 'from chart'); statsWrap.appendChild(athCell); }
           if (isMod('volatility')) {
-            const volCell = statCell('24h Range', '—');
+            const volCell = statCell('24h Range', '-');
             statsWrap.appendChild(volCell);
             const before = Math.floor(Date.now() / 1000);
             apiGet(`/api/coin/${sym}/chart-history?timeframe=1d&before=${before}`, { ttl: 30000 }).then((d) => {
@@ -1880,7 +1880,7 @@
                 const sv = volCell.querySelector('.stat-value');
                 const ss = volCell.querySelector('.stat-sub');
                 if (sv) sv.textContent = `±${((hi - lo) / lo * 100).toFixed(1)}%`;
-                if (ss) ss.textContent = `${fmtPrice(lo)} – ${fmtPrice(hi)}`;
+                if (ss) ss.textContent = `${fmtPrice(lo)} - ${fmtPrice(hi)}`;
               }
             }).catch(() => {});
           }
@@ -2053,7 +2053,7 @@
           fBody.appendChild(h('div', { class: 'feed-row' },
             avatar(t.username || t.symbol, 22),
             h('div', { class: 'mini-main' },
-              h('div', { class: 'mini-name' }, t.symbol || '—', ' ', h('span', { class: isBuy ? 'up' : 'down' }, isBuy ? 'BUY' : 'SELL')),
+              h('div', { class: 'mini-name' }, t.symbol || '-', ' ', h('span', { class: isBuy ? 'up' : 'down' }, isBuy ? 'BUY' : 'SELL')),
               h('div', { class: 'mini-sub' }, (t.username || 'anon') + ' · ' + (t.createdAt ? timeAgo(new Date(t.createdAt).getTime()) : '')),
             ),
             h('span', { class: 'mono' }, fmtBuss(num(t.totalBaseCurrencyAmount ?? t.amount ?? t.value))),
@@ -2121,7 +2121,7 @@
     } }, state.sortOrder === 'desc' ? '▼ desc' : '▲ asc');
 
     const priceSel = h('select', { class: 'select' },
-      [['all', 'All prices'], ['under1', 'Under $1'], ['1to10', '$1 – $10'], ['10to100', '$10 – $100'], ['over100', 'Over $100']].map(([v, l]) => h('option', { value: v, selected: state.priceFilter === v }, l)),
+      [['all', 'All prices'], ['under1', 'Under $1'], ['1to10', '$1 - $10'], ['10to100', '$10 - $100'], ['over100', 'Over $100']].map(([v, l]) => h('option', { value: v, selected: state.priceFilter === v }, l)),
     );
     priceSel.addEventListener('change', () => { state.priceFilter = priceSel.value; page = 1; load(); });
 
@@ -2173,7 +2173,7 @@
       filterRow.innerHTML = '';
       if (isMod('mcapfilter')) {
         filterRow.appendChild(h('span', { class: 'chip-label mono' }, 'MCap'));
-        [['all', 'All'], ['micro', '< $50K'], ['small', '$50K–$1M'], ['mid', '$1M–$5M'], ['large', '> $5M']].forEach(([v, l]) => {
+        [['all', 'All'], ['micro', '< $50K'], ['small', '$50K-$1M'], ['mid', '$1M-$5M'], ['large', '> $5M']].forEach(([v, l]) => {
           filterRow.appendChild(h('button', {
             class: `chip ${clientFilters.mcap === v ? 'on' : ''}`,
             onclick: (ev) => { clientFilters.mcap = v; renderFilterChips(); load(); },
@@ -2182,7 +2182,7 @@
       }
       if (isMod('volfilter')) {
         filterRow.appendChild(h('span', { class: 'chip-label mono' }, 'Vol'));
-        [['all', 'All'], ['low', '< $10K'], ['mid', '$10K–$100K'], ['high', '> $100K']].forEach(([v, l]) => {
+        [['all', 'All'], ['low', '< $10K'], ['mid', '$10K-$100K'], ['high', '> $100K']].forEach(([v, l]) => {
           filterRow.appendChild(h('button', {
             class: `chip ${clientFilters.vol === v ? 'on' : ''}`,
             onclick: (ev) => { clientFilters.vol = v; renderFilterChips(); load(); },
@@ -2934,7 +2934,7 @@
             txBody.appendChild(h('div', { class: `feed-row ${isMod('txlatest') && i === 0 ? 'latest' : ''}` },
               h('span', { class: `tx-type ${isBuy ? 'up' : ''}`, style: `color:${type === 'TRANSFER' ? '#a78bfa' : ''}` }, type),
               h('div', { class: 'mini-main' },
-                h('div', { class: 'mini-name' }, sym || (t.otherUser ? '@' + (t.otherUser.username || '') : '—'), i === 0 && isMod('txlatest') ? h('span', { class: 'mini-tag' }, 'latest') : null),
+                h('div', { class: 'mini-name' }, sym || (t.otherUser ? '@' + (t.otherUser.username || '') : '-'), i === 0 && isMod('txlatest') ? h('span', { class: 'mini-tag' }, 'latest') : null),
                 h('div', { class: 'mini-sub' }, ts ? timeAgo(new Date(ts).getTime()) : ''),
               ),
               h('span', { class: 'mono' }, val ? fmtBuss(val) : ''),
@@ -2979,7 +2979,7 @@
         transferModal('', firstHoldSym);
       } }, icon('send', 13), ' Send coins…');
       transferCard.appendChild(coinBtn);
-      transferCard.appendChild(h('div', { class: 'card-hint' }, 'Cash min $10 · 1% fee. Coins: no fee, ~$10+ value, hidden route the site UI hides.'));
+      transferCard.appendChild(h('div', { class: 'card-hint' }, 'Cash min $10 · 1% fee. Coins: no fee, ~$10+ value - the site only exposes cash transfers.'));
     }
 
     return root;
@@ -3019,7 +3019,7 @@
             },
               avatar(t.username || t.symbol, 24),
               h('div', { class: 'mini-main' },
-                h('div', { class: 'mini-name' }, t.symbol || '—', ' ', h('span', { class: isBuy ? 'up' : 'down' }, isBuy ? 'BUY' : 'SELL')),
+                h('div', { class: 'mini-name' }, t.symbol || '-', ' ', h('span', { class: isBuy ? 'up' : 'down' }, isBuy ? 'BUY' : 'SELL')),
                 h('div', { class: 'mini-sub' }, (t.username || 'anon') + (ts ? ' · ' + timeAgo(new Date(ts).getTime()) : '')),
               ),
               h('span', { class: 'mono' }, fmtBuss(num(t.totalBaseCurrencyAmount ?? t.amount ?? t.value))),
@@ -3027,7 +3027,7 @@
           });
         })
         .catch(() => {
-          status.textContent = 'offline — retrying';
+          status.textContent = 'offline - retrying';
         });
     }
     load();
@@ -3159,7 +3159,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Gamble Lab — EV from the exact server rules
+  // Gamble Lab - EV from the exact server rules
   // ════════════════════════════════════════════════════════════════════
 
   function gambleView() {
@@ -3182,7 +3182,7 @@
           statCell('Wins', String(wins)),
           statCell('Losses', String(losses)),
           statCell('Played', String(total)),
-          statCell('Win Rate', total > 0 ? ((wins / total) * 100).toFixed(1) + '%' : '—'),
+          statCell('Win Rate', total > 0 ? ((wins / total) * 100).toFixed(1) + '%' : '-'),
         ));
       })
       .catch((e) => {
@@ -3203,13 +3203,13 @@
         evRow('Payout', d.mult + '×'),
         evRow('EV per $1', '$' + d.ev.toFixed(2), 'bad'),
         evRow('House edge', (d.edge * 100).toFixed(0) + '%', 'bad'),
-      ], 'Pick 1–6 and hit the number. The 50% house edge makes this the worst game on the platform.'),
+      ], 'Pick 1-6 and hit the number. The 50% house edge makes this the worst game on the platform.'),
       evCard('Coinflip', 'coin', [
         evRow('Win chance', (c.chance * 100).toFixed(1) + '%'),
         evRow('Payout', c.mult + '×'),
         evRow('EV per $1', '$' + c.ev.toFixed(2), 'good'),
         evRow('House edge', (c.edge * 100).toFixed(0) + '%', 'good'),
-      ], 'The only fair game — $1 in, $1 expected back. If you must gamble, do it here.'),
+      ], 'The only fair game - $1 in, $1 expected back. If you must gamble, do it here.'),
       evCard('Slots', 'sparkle', [
         evRow('Triple match', '×5 · ' + ((s.p3 || 0) * 100).toFixed(2) + '%'),
         evRow('Pair match', '×2 · ' + ((s.p2 || 0) * 100).toFixed(2) + '%'),
@@ -3318,7 +3318,7 @@
         floors.map((f) => {
           const cells = TOWER_KEYS.map((dk) => {
             const r = EV.tower(f, dk);
-            return r ? r.mult.toFixed(2) + '×' : '—';
+            return r ? r.mult.toFixed(2) + '×' : '-';
           });
           return [f, ...cells];
         }),
@@ -3331,7 +3331,7 @@
       extra.appendChild(tableCard('Mines Multiplier Table', 'bomb', ['Picks', ...mineSets.map((m) => m + '⛏')],
         picks.map((p) => {
           const cells = mineSets.map((m) => {
-            if (p > 25 - m) return '—';
+            if (p > 25 - m) return '-';
             const r = EV.mines(p, m);
             return r.mult.toFixed(1) + '×';
           });
@@ -3369,7 +3369,7 @@
         sectionTitle('Mines Rules', 'info'),
         h('div', { class: 'ev' },
           evRow('Grid', '5 × 5 = 25 tiles'),
-          evRow('Mines', '3 – 24 per game'),
+          evRow('Mines', '3 - 24 per game'),
           evRow('Win', 'Reveal safe tiles, cash out anytime'),
           evRow('Payout', '95% of fair odds per reveal'),
         ),
@@ -3400,7 +3400,7 @@
               tile.classList.add('boom');
               tile.textContent = '✕';
               over = true;
-              info.textContent = 'Hit a mine. Try again — same 95% payout math.';
+              info.textContent = 'Hit a mine. Try again - same 95% payout math.';
               grid.querySelectorAll('.ms-tile').forEach((t, j) => { if (positions.has(j) && !t.classList.contains('boom')) { t.classList.add('boom'); t.textContent = '✕'; } });
             } else {
               safe++;
@@ -3422,7 +3422,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Shop — real crate catalog, name colors, inventory
+  // Shop - real crate catalog, name colors, inventory
   // ════════════════════════════════════════════════════════════════════
 
   function shopView() {
@@ -3439,7 +3439,7 @@
         h('div', { class: 'gt-table' },
           h('div', { class: 'gt-head' }, ['Package', 'Price', 'Gems', 'Bonus'].map((x) => h('span', { class: 'mono' }, x))),
           GEM_PACKAGES.map((p) => h('div', { class: 'gt-row' },
-            [p.id, `$${p.price.toFixed(2)}`, p.gems.toLocaleString(), p.bonusPct ? `+${p.bonusPct}%` : '—'].map((x, i) => h('span', { class: `mono gt-c${i}` }, x)),
+            [p.id, `$${p.price.toFixed(2)}`, p.gems.toLocaleString(), p.bonusPct ? `+${p.bonusPct}%` : '-'].map((x, i) => h('span', { class: `mono gt-c${i}` }, x)),
           )),
         ),
         h('div', { class: 'card-hint' }, 'The real gem bundles sold on the site via Polar checkout.'),
@@ -3447,7 +3447,7 @@
     }
     let ownedColors = [];
 
-    // inventory — real /api/shop/inventory
+    // inventory - real /api/shop/inventory
     function loadInv() {
       invCard.innerHTML = '';
       invCard.appendChild(sectionTitle('Inventory', 'grid'));
@@ -3481,7 +3481,7 @@
       return ev;
     }
 
-    // crates — the real CRATE_TIERS from the source
+    // crates - the real CRATE_TIERS from the source
     function renderCrates() {
       crateCard.innerHTML = '';
       crateCard.appendChild(sectionTitle('Crate Shop', 'box'));
@@ -3505,7 +3505,7 @@
             if (r && r.type === 'buss') {
               toast('success', 'Crate opened', `You won ${fmtBuss(num(r.bussAmount))}`, 4200);
             } else if (r) {
-              toast('success', r.colorLabel || 'Crate opened', `${r.alreadyOwned ? 'Already owned — ' : ''}${r.colorLabel || 'color'} + ${fmtBuss(num(r.bussAmount))}`, 5200);
+              toast('success', r.colorLabel || 'Crate opened', `${r.alreadyOwned ? 'Already owned - ' : ''}${r.colorLabel || 'color'} + ${fmtBuss(num(r.bussAmount))}`, 5200);
             }
             loadInv();
           }, { cls: 'btn btn-soft btn-sm', confirm: 'Spend gems?' }) : null,
@@ -3515,7 +3515,7 @@
       crateCard.appendChild(h('div', { class: 'card-hint' }, 'Costs and odds are the real catalog values from the server source.'));
     }
 
-    // name colors — the real NAME_COLOR_CATALOG
+    // name colors - the real NAME_COLOR_CATALOG
     function renderColors() {
       colorCard.innerHTML = '';
       colorCard.appendChild(sectionTitle('Name Colors', 'palette'));
@@ -3548,7 +3548,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Rewards — the real daily reward system
+  // Rewards - the real daily reward system
   // ════════════════════════════════════════════════════════════════════
 
   function rewardsView() {
@@ -3624,7 +3624,7 @@
       streakCard.innerHTML = '';
       streakCard.appendChild(sectionTitle('Streak Math', 'activity'));
       streakCard.appendChild(h('div', { class: 'card-hint' }, 'The server keeps your streak when you claim between 12h and 36h after the last claim. Under 12h: no change. Over 36h: reset to 1.'));
-      const inp = h('input', { class: 'input', type: 'number', min: '0', max: '48', step: '0.5', placeholder: 'Hours since last claim (0–48)' });
+      const inp = h('input', { class: 'input', type: 'number', min: '0', max: '48', step: '0.5', placeholder: 'Hours since last claim (0-48)' });
       const out = h('div', { class: 'ev', style: 'margin-top:8px' });
       inp.addEventListener('input', () => {
         const hrs = num(parseFloat(inp.value), -1);
@@ -3633,7 +3633,7 @@
         const ms = hrs * 3600000;
         const nextStreak = ms > 36 * 3600000 ? 1 : (ms >= 12 * 3600000 ? streak + 1 : streak);
         out.appendChild(evRow('Result', nextStreak === streak ? 'streak unchanged' : nextStreak > streak ? `streak +1 → ${nextStreak}` : 'streak reset → 1'));
-        out.appendChild(evRow('Window', hrs < 12 ? 'too soon — no change' : hrs <= 36 ? 'in window — increments' : 'missed — resets'));
+        out.appendChild(evRow('Window', hrs < 12 ? 'too soon - no change' : hrs <= 36 ? 'in window - increments' : 'missed - resets'));
       });
       streakCard.appendChild(inp);
       streakCard.appendChild(out);
@@ -3661,7 +3661,7 @@
         sectionTitle('Claim Window', 'book'),
         h('div', { class: 'gt-table' },
           h('div', { class: 'gt-head' }, ['Time since last claim', 'Result'].map((x) => h('span', { class: 'mono' }, x))),
-          [['< 12 hours', 'streak unchanged'], ['12 – 36 hours', 'streak +1'], ['> 36 hours', 'streak resets to 1']].map(([a, b], i) => h('div', { class: 'gt-row' }, [a, b].map((x, j) => h('span', { class: `mono gt-c${j}` }, x)))),
+          [['< 12 hours', 'streak unchanged'], ['12 - 36 hours', 'streak +1'], ['> 36 hours', 'streak resets to 1']].map(([a, b], i) => h('div', { class: 'gt-row' }, [a, b].map((x, j) => h('span', { class: `mono gt-c${j}` }, x)))),
         ),
         h('div', { class: 'card-hint' }, 'The exact window the server uses before it touches your streak.'),
       ));
@@ -3674,7 +3674,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Prestige — the real reset ladder
+  // Prestige - the real reset ladder
   // ════════════════════════════════════════════════════════════════════
 
   function prestigeView() {
@@ -3734,7 +3734,7 @@
         const n = Number(lvl);
         rows.appendChild(evRow(PRESTIGE_NAMES[n], '$' + fmtShort(cost), n === level + 1 ? 'good' : (n <= level ? 'done' : '')));
       });
-      ladder.appendChild(h('div', { class: 'card-hint' }, 'Prestige costs cash only — coin holdings are sold at market on entry.'));
+      ladder.appendChild(h('div', { class: 'card-hint' }, 'Prestige costs cash only - coin holdings are sold at market on entry.'));
     }
 
     function renderInfo() {
@@ -3783,7 +3783,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Account — promo, keys, blocks, mentions, site volume
+  // Account - promo, keys, blocks, mentions, site volume
   // ════════════════════════════════════════════════════════════════════
 
   function accountView() {
@@ -3906,7 +3906,7 @@
       mentionCard.appendChild(h('div', { class: 'card-hint' }, 'Off = people can mention you. The server defaults to mentions on.'));
     }
 
-    // username check — real availability endpoint
+    // username check - real availability endpoint
     if (isMod('usernamecheck')) {
       const unCard = h('div', { class: 'card' });
       unCard.appendChild(sectionTitle('Username Check', 'at'));
@@ -3930,7 +3930,7 @@
       root.appendChild(unCard);
     }
 
-    // data export — the real account download
+    // data export - the real account download
     if (isMod('dataexport')) {
       const exCard = h('div', { class: 'card' });
       exCard.appendChild(sectionTitle('Data Export', 'download'));
@@ -3949,7 +3949,7 @@
       root.appendChild(exCard);
     }
 
-    // block a user — real endpoint, double-confirmed
+    // block a user - real endpoint, double-confirmed
     if (isMod('blockuser')) {
       const blCard = h('div', { class: 'card' });
       blCard.appendChild(sectionTitle('Block User', 'ban'));
@@ -3962,7 +3962,7 @@
         toast('success', 'Blocked', `@${name} is now blocked`, 3400);
         inp.value = '';
       }, { confirm: 'Really block?' }));
-      blCard.appendChild(h('div', { class: 'card-hint' }, 'Blocked users can still see the site — they just can\'t reach you.'));
+      blCard.appendChild(h('div', { class: 'card-hint' }, 'Blocked users can still see the site - they just can\'t reach you.'));
       root.appendChild(blCard);
     }
 
@@ -3970,7 +3970,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Mods — the full registry, grouped by category
+  // Mods - the full registry, grouped by category
   // ════════════════════════════════════════════════════════════════════
 
   const MOD_CATS = ['Site', 'Trading', 'Market', 'Hopium', 'Gamble', 'Portfolio', 'Social', 'Shop', 'Achievements', 'Rewards', 'Prestige', 'Account', 'Client'];
@@ -4003,7 +4003,7 @@
       count,
       resetBtn,
     ));
-    root.appendChild(h('div', { class: 'card-hint' }, 'Every mod is off until you switch it on. Mods marked ', h('span', { class: 'mod-site' }, '● site'), ' render directly on rugplay.com when enabled — the rest live inside the client.'));
+    root.appendChild(h('div', { class: 'card-hint' }, 'Every mod is off until you switch it on. Mods marked ', h('span', { class: 'mod-site' }, '● site'), ' render directly on rugplay.com when enabled - the rest live inside the client.'));
     root.appendChild(chips);
     const grid = h('div', { class: 'mod-grid' });
     root.appendChild(grid);
@@ -5022,7 +5022,7 @@
   `;
 
   // ════════════════════════════════════════════════════════════════════
-  // Onsite HUD — enabled mods render on rugplay.com itself
+  // Onsite HUD - enabled mods render on rugplay.com itself
   // ════════════════════════════════════════════════════════════════════
 
   // page-level styles (injected once into the site's <head>)
@@ -5213,7 +5213,7 @@
             if (c) {
               const share = num(c.percentage, 0);
               b.textContent = `@${c.username || 'dev'} ${share.toFixed(1)}%`;
-              if (share > 50) { b.textContent += ' — extreme rug risk'; el.classList.add('warn'); }
+              if (share > 50) { b.textContent += ' - extreme rug risk'; el.classList.add('warn'); }
             } else b.textContent = 'no holders yet';
           }).catch(() => {});
         }
@@ -5354,7 +5354,7 @@
         r.innerHTML = `<span class="u">@${c.username || '?'}</span><span class="tx">${(c.content || '').slice(0, 64)}</span>`;
         rows.appendChild(r);
       });
-    }).catch(() => { rows.textContent = '—'; });
+    }).catch(() => { rows.textContent = '-'; });
     return { el };
   }
 
@@ -5372,7 +5372,7 @@
         r.innerHTML = `<span class="q">${(q.question || '').slice(0, 44)}</span><span class="mono yes">${pct}%</span>`;
         rows.appendChild(r);
       });
-    }).catch(() => { rows.textContent = '—'; });
+    }).catch(() => { rows.textContent = '-'; });
     return { el };
   }
 
@@ -5388,7 +5388,7 @@
         r.innerHTML = `<span class="rk">${i + 1}</span><span class="u">@${x.username || '?'}</span><span class="mono v">${fmtBuss(num(x.totalSold))}</span>`;
         rows.appendChild(r);
       });
-    }).catch(() => { rows.textContent = '—'; });
+    }).catch(() => { rows.textContent = '-'; });
     return { el };
   }
 
@@ -5417,7 +5417,7 @@
         r.innerHTML = `<span class="t sell">OUT</span><span class="u">@${u || '?'}</span><span class="mono v">${fmtBuss(num(t.totalBaseCurrencyAmount))}</span>`;
         rows.appendChild(r);
       });
-    }).catch(() => { rows.textContent = '—'; });
+    }).catch(() => { rows.textContent = '-'; });
     return { el };
   }
 
@@ -5429,7 +5429,7 @@
       const s = d && d.season;
       const me = d && d.me;
       if (!s) { b.textContent = 'no active season'; return; }
-      if (me && me.joined) { b.textContent = `${s.name} · entered (rank ${me.rank || '—'})`; return; }
+      if (me && me.joined) { b.textContent = `${s.name} · entered (rank ${me.rank || '-'})`; return; }
       const stake = fmtBuss(num(d && d.rankedStake, num(s.rankedStake)));
       const btn = document.createElement('button');
       btn.className = 'cc-abtn';
@@ -5444,7 +5444,7 @@
         }).catch((e) => { btn.disabled = false; btn.textContent = `Join for ${stake}`; toast('error', 'Season join failed', e.message); });
       };
       b.appendChild(btn);
-    }).catch(() => { b.textContent = '—'; });
+    }).catch(() => { b.textContent = '-'; });
     return { el };
   }
 
@@ -5461,7 +5461,7 @@
       if (ev.key !== 'Enter' || !inp.value.trim()) return;
       apiGet(`/api/settings/check-username?username=${encodeURIComponent(inp.value.trim())}`, { ttl: 0 })
         .then((d) => { out.textContent = d && d.available ? '✓ available' : `✗ ${(d && d.reason) || 'taken'}`; })
-        .catch(() => { out.textContent = '—'; });
+        .catch(() => { out.textContent = '-'; });
     });
     wrap.appendChild(inp);
     wrap.appendChild(out);
@@ -5486,7 +5486,7 @@
           toast('info', 'New mention', fresh && fresh.title ? fresh.title : 'Someone mentioned you');
         }
         lastCount = unread;
-      }).catch(() => { b.textContent = '—'; });
+      }).catch(() => { b.textContent = '-'; });
     };
     load();
     const t = setInterval(load, 20000);
@@ -5541,7 +5541,7 @@
       btn.onclick = () => transferModal(m[1]);
       b.appendChild(btn);
     } else {
-      b.textContent = '—';
+      b.textContent = '-';
     }
     return { el };
   }
@@ -5726,7 +5726,7 @@
           const end = q.resolutionDate ? new Date(q.resolutionDate).getTime() : null;
           if (end && end > Date.now() && (!soon || end < soon)) soon = end;
         });
-        b.textContent = soon ? fmtDur((soon - Date.now()) / 1000) : '—';
+        b.textContent = soon ? fmtDur((soon - Date.now()) / 1000) : '-';
       }
     }).catch(() => {});
     return { el };
@@ -5783,7 +5783,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Social — friends & ranks, mentions, messages
+  // Social - friends & ranks, mentions, messages
   // ════════════════════════════════════════════════════════════════════
 
   function transferModal(username, presym) {
@@ -5834,10 +5834,10 @@
         } catch (e) { toast('error', 'Transfer failed', e.message); btn.disabled = false; }
         return;
       }
-      // COIN — amount is in tokens, min estimated value $10, no fee
+      // COIN - amount is in tokens, min estimated value $10, no fee
       const sym = (symIn.value || '').trim().toUpperCase();
       if (!to || !sym || amt <= 0) { toast('error', 'Invalid transfer', 'Username, coin and amount required'); return; }
-      if (price > 0 && amt * price < 10) { toast('error', 'Too small', `That bag is worth ~$${(amt * price).toFixed(2)} — needs $10 minimum`); return; }
+      if (price > 0 && amt * price < 10) { toast('error', 'Too small', `That bag is worth ~$${(amt * price).toFixed(2)} - needs $10 minimum`); return; }
       btn.disabled = true;
       try {
         const res = await apiPost('/api/transfer', { recipientUsername: to, type: 'COIN', amount: amt, coinSymbol: sym });
@@ -5889,7 +5889,7 @@
     render();
   }
 
-  // @mention autocomplete — suggests real usernames, inserts the token
+  // @mention autocomplete - suggests real usernames, inserts the token
   function attachMentionAutocomplete(inputEl, suggestFn) {
     let menu = null;
     let items = [];
@@ -6034,7 +6034,7 @@
       } }, icon('check', 12), ' Mark all read');
       body.appendChild(h('div', { class: 'card' },
         sectionTitle('Mentions', 'at', markBtn),
-        h('div', { class: 'card-hint' }, 'Real MENTION notifications — when someone @mentions you in a comment, the server pings you here.'),
+        h('div', { class: 'card-hint' }, 'Real MENTION notifications - when someone @mentions you in a comment, the server pings you here.'),
         listEl,
       ));
       listEl.appendChild(h('div', { class: 'skeleton-block' }, skeleton('100%', '60px')));
@@ -6131,7 +6131,7 @@
   }
 
   // ════════════════════════════════════════════════════════════════════
-  // Shell — window, sidebar, title bar, router
+  // Shell - window, sidebar, title bar, router
   // ════════════════════════════════════════════════════════════════════
 
   let shadow = null;
@@ -6308,7 +6308,7 @@
     windowEl.classList.toggle('max', maximized);
   }
 
-  // mod-gated chrome — rebuilt live so enabling a mod shows its chrome immediately
+  // mod-gated chrome - rebuilt live so enabling a mod shows its chrome immediately
   let bellSlot = null, footSlot = null, brandSlot = null;
   let bellBtn = null, badgeEl = null, bellPanel = null;
 
@@ -6398,7 +6398,7 @@
       }
     });
 
-    // mod-gated chrome — bell + credits rebuild live when mods toggle
+    // mod-gated chrome - bell + credits rebuild live when mods toggle
     bellSlot = h('span', { class: 'bell-slot' });
     footSlot = h('div', { class: 'foot-slot' });
     renderChrome();
@@ -6452,7 +6452,7 @@
 
   // keyboard
   function onKeydown(ev) {
-    // Right Shift is the launcher — always available, it is not a mod
+    // Right Shift is the launcher - always available, it is not a mod
     if (ev.code === 'ShiftRight') {
       ev.preventDefault();
       toggleWindow();
